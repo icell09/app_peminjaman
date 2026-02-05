@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-
 void main() {
   runApp(const MyApp());
 }
@@ -26,29 +25,68 @@ class BerandaAdmin extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-      body: SingleChildScrollView(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildWelcomeCard(),
-                  const SizedBox(height: 20),
-                  _buildSummaryGrid(),
-                  const SizedBox(height: 24),
-                  const Text(
-                    "Grafik Alat Yang Sering Dipinjam",
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+
+      // ✅ FIX OVERFLOW: dibuat scrollable
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Column(
+            children: [
+              // --- HEADER ---
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0061CD),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  const SizedBox(height: 12),
-                  _buildChartCard(),
-                ],
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text(
+                        'Beranda',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 26,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Kelola data peminjaman sekolah dengan mudah',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+
+              // --- KONTEN ---
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildWelcomeCard(),
+                    const SizedBox(height: 20),
+
+                    // ✅ BONUS: agar aman di HP kecil (bisa geser kiri-kanan)
+                    _buildSummaryGrid(),
+                    const SizedBox(height: 24),
+
+                    const Text(
+                      "Grafik Alat Yang Sering Dipinjam",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 12),
+                    _buildChartCard(),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -56,45 +94,13 @@ class BerandaAdmin extends StatelessWidget {
 
   // --- Widget Komponen ---
 
-  Widget _buildHeader() {
-    return Container(
-      padding: const EdgeInsets.only(top: 50, left: 20, right: 20, bottom: 20),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0061D1),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(20),
-          bottomRight: Radius.circular(20),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: const [
-              Text(
-                "Beranda",
-                style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                "Kelola data peminjaman sekolah dengan mudah",
-                style: TextStyle(color: Colors.white70, fontSize: 12),
-              ),
-            ],
-          ),
-          const Icon(Icons.notifications, color: Colors.white, size: 28),
-        ],
-      ),
-    );
-  }
-
   Widget _buildWelcomeCard() {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),
       child: Row(
         children: [
@@ -107,22 +113,28 @@ class BerandaAdmin extends StatelessWidget {
               ],
             ),
           ),
-          // Placeholder untuk Ilustrasi (Gunakan Image.asset jika ada gambarnya)
+          // Pastikan asset ini ada di pubspec.yaml
           Image.asset('assets/images/admin.png', width: 120, height: 120),
         ],
       ),
     );
   }
 
+  // ✅ Dibuat horizontal scroll agar tidak sempit di layar kecil
   Widget _buildSummaryGrid() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        _statCard("4", "Total Alat", Colors.blue[100]!, Colors.blue),
-        _statCard("4", "Alat Rusak", Colors.red[100]!, Colors.red),
-        _statCard("4", "Alat Tersedia", Colors.green[100]!, Colors.green),
-        _statCard("4", "Sedang Dipinjam", Colors.orange[100]!, Colors.orange),
-      ],
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          _statCard("4", "Total Alat", Colors.blue[100]!, Colors.blue),
+          const SizedBox(width: 12),
+          _statCard("4", "Alat Rusak", Colors.red[100]!, Colors.red),
+          const SizedBox(width: 12),
+          _statCard("4", "Alat Tersedia", Colors.green[100]!, Colors.green),
+          const SizedBox(width: 12),
+          _statCard("4", "Sedang Dipinjam", Colors.orange[100]!, Colors.orange),
+        ],
+      ),
     );
   }
 
@@ -137,8 +149,16 @@ class BerandaAdmin extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black)),
-          Text(label, textAlign: TextAlign.center, style: TextStyle(fontSize: 8, color: Colors.black54)),
+          Text(
+            value,
+            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 8, color: Colors.black54),
+          ),
         ],
       ),
     );
@@ -146,32 +166,32 @@ class BerandaAdmin extends StatelessWidget {
 
   Widget _buildChartCard() {
     return Container(
-      height: 300, // Tinggi area grafik ditambah agar lega
+      height: 300,
       padding: const EdgeInsets.fromLTRB(10, 20, 20, 10),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 10)],
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10)],
       ),
       child: BarChart(
         BarChartData(
           alignment: BarChartAlignment.spaceAround,
-          // FIX 1: maxY harus lebih tinggi dari data tertinggi (220)
-          maxY: 250, 
+          maxY: 250,
           barTouchData: BarTouchData(enabled: true),
           titlesData: FlTitlesData(
             show: true,
-            // FIX 2: Perbaikan Label Bawah (Sumbu X)
             bottomTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 45, // Ruang untuk teks agar tidak terpotong
+                reservedSize: 45,
                 getTitlesWidget: (value, meta) {
                   const titles = ['Mouse', 'Kybord', 'Proyekt', 'Fldisk', 'Router', 'Kabel', 'Laptop'];
-                  // Menggunakan SideTitleWidget agar posisi teks presisi
+                  if (value.toInt() < 0 || value.toInt() >= titles.length) {
+                    return const SizedBox.shrink();
+                  }
                   return SideTitleWidget(
                     axisSide: meta.axisSide,
-                    space: 10, // Jarak teks ke batang
+                    space: 10,
                     child: Text(
                       titles[value.toInt()],
                       style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black54),
@@ -180,12 +200,11 @@ class BerandaAdmin extends StatelessWidget {
                 },
               ),
             ),
-            // FIX 3: Perbaikan Angka Samping (Sumbu Y)
             leftTitles: AxisTitles(
               sideTitles: SideTitles(
                 showTitles: true,
-                reservedSize: 40, // Ruang agar angka puluhan tidak tumpang tindih
-                interval: 50,    // Memunculkan angka tiap kelipatan 50 (0, 50, 100, dst)
+                reservedSize: 40,
+                interval: 50,
                 getTitlesWidget: (value, meta) {
                   return Text(
                     value.toInt().toString(),
@@ -221,7 +240,6 @@ class BerandaAdmin extends StatelessWidget {
     );
   }
 
-  // Fungsi pembantu untuk membuat batang grafik yang rapi
   BarChartGroupData _makeGroupData(int x, double y) {
     return BarChartGroupData(
       x: x,
@@ -229,7 +247,7 @@ class BerandaAdmin extends StatelessWidget {
         BarChartRodData(
           toY: y,
           color: const Color(0xFF0061D1),
-          width: 18, // Lebar batang
+          width: 18,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
         ),
       ],
