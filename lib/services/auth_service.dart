@@ -12,6 +12,8 @@ class AuthService {
           .eq('email', email)
           .maybeSingle();
 
+      print("DATA DARI DATABASE: $checkUser"); // Lihat hasilnya di Debug Console VS Code
+
       if (checkUser == null) {
         return "email_not_found"; // Tandai jika email tidak ada
       }

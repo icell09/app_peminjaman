@@ -9,7 +9,7 @@ void main() async {
   // 1. Pastikan binding widget sudah siap
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Inisialisasi Supabase (Gunakan URL dan Anon Key milikmu)
+  // 2. Inisialisasi Supabase (Gunakan URL dan Anon Key dari project Supabase)
   await Supabase.initialize(
     url: 'https://atozxtqbyjfrnogijbpa.supabase.co',
     anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF0b3p4dHFieWpmcm5vZ2lqYnBhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg1OTk0MTIsImV4cCI6MjA4NDE3NTQxMn0.vnZiOjHhKFwWWEklCxYEjqB2AWMTL5ytZalTPx0C9_w', 

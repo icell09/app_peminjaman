@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 
-class PengaturanAdmin extends StatelessWidget {
-  const PengaturanAdmin({super.key});
+class ProfilAdmin extends StatelessWidget {
+  const ProfilAdmin({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan'), backgroundColor: const Color(0xFF0056C1), foregroundColor: Colors.white),
+      appBar: AppBar(title: const Text('Profil Admin'), backgroundColor: const Color(0xFF0056C1), foregroundColor: Colors.white),
       body: Column(
         children: [
           const ListTile(leading: Icon(Icons.person), title: Text('Profil Admin')),

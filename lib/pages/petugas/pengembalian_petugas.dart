@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class PengembalianPage extends StatelessWidget {
-  const PengembalianPage({super.key});
+class PengembalianPetugas extends StatelessWidget {
+  const PengembalianPetugas({super.key});
 
   @override
   Widget build(BuildContext context) {

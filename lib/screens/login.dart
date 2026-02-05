@@ -21,8 +21,8 @@ class _LoginPageState extends State<LoginPage> {
   void _handleLogin() async {
   setState(() {
     // Reset error lama dan validasi kolom kosong
-    _emailError = _emailController.text.isEmpty ? "Alamat email wajib diisi" : null;
-    _passwordError = _passwordController.text.isEmpty ? "Kata sandi wajib diisi" : null;
+    _emailError = _emailController.text.isEmpty ? "Alamat email tidak boleh kosong" : null;
+    _passwordError = _passwordController.text.isEmpty ? "Kata sandi tidak boleh kosong" : null;
   });
 
   if (_emailError == null && _passwordError == null) {

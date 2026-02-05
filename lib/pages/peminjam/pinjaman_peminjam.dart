@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-class PinjamanPage extends StatelessWidget {
-  const PinjamanPage({super.key});
+class PinjamanPeminjam extends StatelessWidget {
+  const PinjamanPeminjam({super.key});
 
   @override
   Widget build(BuildContext context) {

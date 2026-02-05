@@ -90,7 +90,7 @@ class _NavigationControllerState extends State<NavigationController> {
 
     // Gunakan _currentRole yang sudah diupdate dari Database
     if (_currentRole == Role.admin) {
-      screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(), const ProfilPage()];
+      screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(), const ProfilAdmin()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.work), label: 'Alat'),
@@ -99,7 +99,7 @@ class _NavigationControllerState extends State<NavigationController> {
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
       ];
     } else if (_currentRole == Role.petugas) {
-      screens = [const BerandaPetugas(), const PersetujuanPetugas(), const LaporanPage(), const PengembalianPage(), const ProfilPetugas()];
+      screens = [const BerandaPetugas(), const PersetujuanPetugas(), const LaporanPetugas(), const PengembalianPetugas(), const ProfilPetugas()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Persetujuan'),
@@ -108,7 +108,7 @@ class _NavigationControllerState extends State<NavigationController> {
         BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),  
       ];
     } else {
-      screens = [const BerandaPeminjam(), const PinjamanPage(), const ProfilPage()];
+      screens = [const BerandaPeminjam(), const PinjamanPeminjam(), const ProfilPeminjam()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Pinjaman'),
