@@ -4,6 +4,7 @@ void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
+
   @override
   Widget build(BuildContext context) {
     return const MaterialApp(
@@ -26,14 +27,14 @@ class PenggunaModel {
   PenggunaModel({
     required this.id,
     required this.nama,
-  required this.email,
+    required this.email,
     required this.role,
     required this.status,
   });
 }
 
 /* =======================
-   PAGE ADMIN
+   PAGE ADMIN (TANPA NAVIGASI)
 ======================= */
 class PenggunaAdmin extends StatefulWidget {
   const PenggunaAdmin({super.key});
@@ -69,7 +70,9 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
     final q = searchCtrl.text.toLowerCase();
     return pengguna.where((p) {
       final matchSearch =
-          q.isEmpty || p.nama.toLowerCase().contains(q) || p.email.toLowerCase().contains(q);
+          q.isEmpty ||
+          p.nama.toLowerCase().contains(q) ||
+          p.email.toLowerCase().contains(q);
       final matchStatus = filterStatus == "Semua" || p.status == filterStatus;
       return matchSearch && matchStatus;
     }).toList();
@@ -93,11 +96,12 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _FormPengguna(
-        title: data == null ? "Tambah Pengguna" : "Edit Pengguna",
-        initial: data,
-        primaryBlue: primaryBlue,
-      ),
+      builder:
+          (_) => _FormPengguna(
+            title: data == null ? "Tambah Pengguna" : "Edit Pengguna",
+            initial: data,
+            primaryBlue: primaryBlue,
+          ),
     );
 
     if (result == null) return;
@@ -120,19 +124,25 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
   Future<void> hapusPengguna(PenggunaModel data) async {
     final ok = await showDialog<bool>(
       context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Hapus Pengguna"),
-        content: const Text("Apakah anda yakin ingin menghapus pengguna ?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Batal")),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: primaryBlue),
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text("Hapus"),
+      builder:
+          (_) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
+            title: const Text("Hapus Pengguna"),
+            content: const Text("Apakah yakin ingin menghapus pengguna ini?"),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text("Batal"),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: primaryBlue),
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text("Hapus"),
+              ),
+            ],
           ),
-        ],
-      ),
     );
 
     if (ok != true) return;
@@ -157,22 +167,6 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
         child: const Icon(Icons.add, color: Colors.white),
       ),
 
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        backgroundColor: primaryBlue,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white70,
-        showSelectedLabels: false,
-        showUnselectedLabels: false,
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.description_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.group_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory_2_outlined), label: ""),
-          BottomNavigationBarItem(icon: Icon(Icons.settings_outlined), label: ""),
-        ],
-      ),
-
       body: Column(
         children: [
           /* HEADER */
@@ -185,16 +179,29 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
             ),
             decoration: BoxDecoration(
               color: primaryBlue,
-              borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+              borderRadius: const BorderRadius.vertical(
+                bottom: Radius.circular(20),
+              ),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text("Pengguna",
-                    style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                const Text(
+                  "Pengguna",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text("Kelola data pengguna laboratorium",
-                    style: TextStyle(color: Colors.white.withOpacity(0.85), fontSize: 12)),
+                Text(
+                  "Kelola data pengguna laboratorium",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.85),
+                    fontSize: 12,
+                  ),
+                ),
                 const SizedBox(height: 12),
 
                 Row(
@@ -208,7 +215,9 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
                           prefixIcon: const Icon(Icons.search),
                           filled: true,
                           fillColor: Colors.white,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                     ),
@@ -216,20 +225,29 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
                     DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: filterStatus,
-                        items: const ["Semua", "Aktif", "Nonaktif"]
-                            .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                            .toList(),
+                        items:
+                            const ["Semua", "Aktif", "Nonaktif"]
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(e),
+                                  ),
+                                )
+                                .toList(),
                         onChanged: (v) => setState(() => filterStatus = v!),
                       ),
-                    )
+                    ),
                   ],
                 ),
               ],
             ),
           ),
 
-          const SizedBox(height: 10),
-          Text("${pengguna.length}", style: const TextStyle(fontWeight: FontWeight.bold)),
+          const SizedBox(height: 12),
+          Text(
+            "${pengguna.length}",
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           const Text("Total Pengguna", style: TextStyle(fontSize: 12)),
 
           Expanded(
@@ -237,14 +255,15 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
               padding: const EdgeInsets.all(16),
               itemCount: list.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
-              itemBuilder: (_, i) => _CardPengguna(
-                data: list[i],
-                primaryBlue: primaryBlue,
-                onEdit: () => openForm(data: list[i]),
-                onDelete: () => hapusPengguna(list[i]),
-              ),
+              itemBuilder:
+                  (_, i) => _CardPengguna(
+                    data: list[i],
+                    primaryBlue: primaryBlue,
+                    onEdit: () => openForm(data: list[i]),
+                    onDelete: () => hapusPengguna(list[i]),
+                  ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -274,7 +293,9 @@ class _CardPengguna extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.04), blurRadius: 12),
+        ],
       ),
       child: Column(
         children: [
@@ -286,10 +307,16 @@ class _CardPengguna extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(data.nama, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  Text(data.email, style: const TextStyle(fontSize: 12)),
-                ]),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      data.nama,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(data.email, style: const TextStyle(fontSize: 12)),
+                  ],
+                ),
               ),
             ],
           ),
@@ -307,12 +334,19 @@ class _CardPengguna extends StatelessWidget {
               Expanded(
                 child: OutlinedButton.icon(
                   onPressed: onDelete,
-                  icon: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 18),
-                  label: Text("Hapus", style: TextStyle(color: Colors.red.shade600)),
+                  icon: Icon(
+                    Icons.delete_outline,
+                    color: Colors.red.shade600,
+                    size: 18,
+                  ),
+                  label: Text(
+                    "Hapus",
+                    style: TextStyle(color: Colors.red.shade600),
+                  ),
                 ),
               ),
             ],
-          )
+          ),
         ],
       ),
     );
@@ -368,78 +402,101 @@ class _FormPenggunaState extends State<_FormPengguna> {
         ),
         child: Form(
           key: _formKey,
-          child: Column(mainAxisSize: MainAxisSize.min, children: [
-            Text(widget.title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.title,
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 14),
 
-            TextFormField(
-              controller: namaCtrl,
-              validator: (v) => v!.isEmpty ? "Nama wajib diisi" : null,
-              decoration: const InputDecoration(labelText: "Nama Lengkap"),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: emailCtrl,
-              validator: (v) => !v!.contains("@") ? "Email tidak valid" : null,
-              decoration: const InputDecoration(labelText: "Email"),
-            ),
-            const SizedBox(height: 10),
+              TextFormField(
+                controller: namaCtrl,
+                validator: (v) => v!.isEmpty ? "Nama wajib diisi" : null,
+                decoration: const InputDecoration(labelText: "Nama Lengkap"),
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: emailCtrl,
+                validator:
+                    (v) => !v!.contains("@") ? "Email tidak valid" : null,
+                decoration: const InputDecoration(labelText: "Email"),
+              ),
+              const SizedBox(height: 10),
 
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField(
-                    value: status,
-                    items: const ["Aktif", "Nonaktif"]
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (v) => setState(() => status = v!),
-                    decoration: const InputDecoration(labelText: "Status"),
+              Row(
+                children: [
+                  Expanded(
+                    child: DropdownButtonFormField(
+                      value: status,
+                      items:
+                          const ["Aktif", "Nonaktif"]
+                              .map(
+                                (e) =>
+                                    DropdownMenuItem(value: e, child: Text(e)),
+                              )
+                              .toList(),
+                      onChanged: (v) => setState(() => status = v!),
+                      decoration: const InputDecoration(labelText: "Status"),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: DropdownButtonFormField(
-                    value: role,
-                    items: const ["Admin", "Petugas"]
-                        .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (v) => setState(() => role = v!),
-                    decoration: const InputDecoration(labelText: "Role"),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: DropdownButtonFormField(
+                      value: role,
+                      items:
+                          const ["Admin", "Petugas"]
+                              .map(
+                                (e) =>
+                                    DropdownMenuItem(value: e, child: Text(e)),
+                              )
+                              .toList(),
+                      onChanged: (v) => setState(() => role = v!),
+                      decoration: const InputDecoration(labelText: "Role"),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+                ],
+              ),
+              const SizedBox(height: 16),
 
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: FilledButton(
-                    style: FilledButton.styleFrom(backgroundColor: widget.primaryBlue),
-                    onPressed: () {
-                      if (!_formKey.currentState!.validate()) return;
-                      Navigator.pop(
-                        context,
-                        PenggunaModel(
-                          id: widget.initial?.id ?? DateTime.now().millisecondsSinceEpoch.toString(),
-                          nama: namaCtrl.text,
-                          email: emailCtrl.text,
-                          role: role,
-                          status: status,
-                        ),
-                      );
-                    },
-                    child: const Text("Simpan"),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text("Batal"),
+                    ),
                   ),
-                ),
-              ],
-            )
-          ]),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: widget.primaryBlue,
+                      ),
+                      onPressed: () {
+                        if (!_formKey.currentState!.validate()) return;
+                        Navigator.pop(
+                          context,
+                          PenggunaModel(
+                            id:
+                                widget.initial?.id ??
+                                DateTime.now().millisecondsSinceEpoch
+                                    .toString(),
+                            nama: namaCtrl.text,
+                            email: emailCtrl.text,
+                            role: role,
+                            status: status,
+                          ),
+                        );
+                      },
+                      child: const Text("Simpan"),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );

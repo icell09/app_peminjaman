@@ -26,10 +26,30 @@ class _AlatAdminState extends State<AlatAdmin> {
 
   // Data alat (web-safe: fotoBytes)
   final List<Map<String, dynamic>> _allAlat = [
-    {'nama': 'Logitech G305', 'stok': 16, 'kategori': 'Perangkat Keras', 'fotoBytes': null},
-    {'nama': 'SSD Samsung 1TB', 'stok': 5, 'kategori': 'Perangkat Penyimpanan', 'fotoBytes': null},
-    {'nama': 'Router TP-Link', 'stok': 8, 'kategori': 'Perangkat Jaringan', 'fotoBytes': null},
-    {'nama': 'Monitor Dell 24"', 'stok': 12, 'kategori': 'Perangkat Output', 'fotoBytes': null},
+    {
+      'nama': 'Logitech G305',
+      'stok': 16,
+      'kategori': 'Perangkat Keras',
+      'fotoBytes': null,
+    },
+    {
+      'nama': 'SSD Samsung 1TB',
+      'stok': 5,
+      'kategori': 'Perangkat Penyimpanan',
+      'fotoBytes': null,
+    },
+    {
+      'nama': 'Router TP-Link',
+      'stok': 8,
+      'kategori': 'Perangkat Jaringan',
+      'fotoBytes': null,
+    },
+    {
+      'nama': 'Monitor Dell 24"',
+      'stok': 12,
+      'kategori': 'Perangkat Output',
+      'fotoBytes': null,
+    },
   ];
 
   void _toast(String msg) {
@@ -47,21 +67,22 @@ class _AlatAdminState extends State<AlatAdmin> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => TambahAlatDialog(
-        categories: _kategoriList.where((e) => e != "Semua").toList(),
-        onSubmit: (data) {
-          setState(() {
-            _allAlat.insert(0, {
-              'nama': data['nama'],
-              'stok': data['stok'],
-              'kategori': data['kategori'],
-              'fotoBytes': data['fotoBytes'],
-            });
-          });
-          Navigator.pop(context);
-          _toast('Alat berhasil ditambahkan');
-        },
-      ),
+      builder:
+          (_) => TambahAlatDialog(
+            categories: _kategoriList.where((e) => e != "Semua").toList(),
+            onSubmit: (data) {
+              setState(() {
+                _allAlat.insert(0, {
+                  'nama': data['nama'],
+                  'stok': data['stok'],
+                  'kategori': data['kategori'],
+                  'fotoBytes': data['fotoBytes'],
+                });
+              });
+              Navigator.pop(context);
+              _toast('Alat berhasil ditambahkan');
+            },
+          ),
     );
   }
 
@@ -69,51 +90,60 @@ class _AlatAdminState extends State<AlatAdmin> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => EditAlatDialog(
-        categories: _kategoriList.where((e) => e != "Semua").toList(),
-        initialNama: item['nama'] as String,
-        initialStok: (item['stok'] as int).toString(),
-        initialKategori: item['kategori'] as String,
-        initialFotoBytes: item['fotoBytes'] as Uint8List?,
-        onSubmit: (data) {
-          setState(() {
-            item['nama'] = data['nama'];
-            item['stok'] = data['stok'];
-            item['kategori'] = data['kategori'];
-            item['fotoBytes'] = data['fotoBytes'];
-          });
-          Navigator.pop(context);
-          _toast("Alat berhasil diupdate");
-        },
-      ),
+      builder:
+          (_) => EditAlatDialog(
+            categories: _kategoriList.where((e) => e != "Semua").toList(),
+            initialNama: item['nama'] as String,
+            initialStok: (item['stok'] as int).toString(),
+            initialKategori: item['kategori'] as String,
+            initialFotoBytes: item['fotoBytes'] as Uint8List?,
+            onSubmit: (data) {
+              setState(() {
+                item['nama'] = data['nama'];
+                item['stok'] = data['stok'];
+                item['kategori'] = data['kategori'];
+                item['fotoBytes'] = data['fotoBytes'];
+              });
+              Navigator.pop(context);
+              _toast("Alat berhasil diupdate");
+            },
+          ),
     );
   }
 
   void _openDeleteAlat(Map<String, dynamic> item) {
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Hapus Alat"),
-        content: Text('Apakah anda yakin ingin menghapus "${item['nama']}"?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Hapus Alat"),
+            content: Text(
+              'Apakah anda yakin ingin menghapus "${item['nama']}"?',
             ),
-            onPressed: () {
-              setState(() => _allAlat.remove(item));
-              Navigator.pop(context);
-              _toast("Alat berhasil dihapus");
-            },
-            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Batal"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() => _allAlat.remove(item));
+                  Navigator.pop(context);
+                  _toast("Alat berhasil dihapus");
+                },
+                child: const Text(
+                  "Hapus",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -124,28 +154,29 @@ class _AlatAdminState extends State<AlatAdmin> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => KategoriFormDialog(
-        title: "Tambah Kategori",
-        initialName: "",
-        readOnlyCount: null,
-        onSubmit: (name) {
-          final newName = name.trim();
-          if (newName.isEmpty) return;
+      builder:
+          (_) => KategoriFormDialog(
+            title: "Tambah Kategori",
+            initialName: "",
+            readOnlyCount: null,
+            onSubmit: (name) {
+              final newName = name.trim();
+              if (newName.isEmpty) return;
 
-          final exists = _kategoriList
-              .where((k) => k != "Semua")
-              .any((k) => k.toLowerCase() == newName.toLowerCase());
+              final exists = _kategoriList
+                  .where((k) => k != "Semua")
+                  .any((k) => k.toLowerCase() == newName.toLowerCase());
 
-          if (exists) {
-            _toast("Kategori sudah ada");
-            return;
-          }
+              if (exists) {
+                _toast("Kategori sudah ada");
+                return;
+              }
 
-          setState(() => _kategoriList.add(newName));
-          Navigator.pop(context);
-          _toast("Kategori berhasil ditambahkan");
-        },
-      ),
+              setState(() => _kategoriList.add(newName));
+              Navigator.pop(context);
+              _toast("Kategori berhasil ditambahkan");
+            },
+          ),
     );
   }
 
@@ -155,42 +186,43 @@ class _AlatAdminState extends State<AlatAdmin> {
     showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (_) => KategoriFormDialog(
-        title: "Edit Kategori",
-        initialName: oldName,
-        readOnlyCount: count,
-        onSubmit: (newNameRaw) {
-          final newName = newNameRaw.trim();
-          if (newName.isEmpty) return;
+      builder:
+          (_) => KategoriFormDialog(
+            title: "Edit Kategori",
+            initialName: oldName,
+            readOnlyCount: count,
+            onSubmit: (newNameRaw) {
+              final newName = newNameRaw.trim();
+              if (newName.isEmpty) return;
 
-          if (newName == oldName) {
-            Navigator.pop(context);
-            return;
-          }
+              if (newName == oldName) {
+                Navigator.pop(context);
+                return;
+              }
 
-          final exists = _kategoriList
-              .where((k) => k != "Semua")
-              .any((k) => k.toLowerCase() == newName.toLowerCase());
-          if (exists) {
-            _toast("Nama kategori sudah dipakai");
-            return;
-          }
+              final exists = _kategoriList
+                  .where((k) => k != "Semua")
+                  .any((k) => k.toLowerCase() == newName.toLowerCase());
+              if (exists) {
+                _toast("Nama kategori sudah dipakai");
+                return;
+              }
 
-          setState(() {
-            final idx = _kategoriList.indexOf(oldName);
-            if (idx != -1) _kategoriList[idx] = newName;
+              setState(() {
+                final idx = _kategoriList.indexOf(oldName);
+                if (idx != -1) _kategoriList[idx] = newName;
 
-            if (_selectedKategori == oldName) _selectedKategori = newName;
+                if (_selectedKategori == oldName) _selectedKategori = newName;
 
-            for (final a in _allAlat) {
-              if (a['kategori'] == oldName) a['kategori'] = newName;
-            }
-          });
+                for (final a in _allAlat) {
+                  if (a['kategori'] == oldName) a['kategori'] = newName;
+                }
+              });
 
-          Navigator.pop(context);
-          _toast("Kategori berhasil diupdate");
-        },
-      ),
+              Navigator.pop(context);
+              _toast("Kategori berhasil diupdate");
+            },
+          ),
     );
   }
 
@@ -199,42 +231,49 @@ class _AlatAdminState extends State<AlatAdmin> {
 
     showDialog(
       context: context,
-      builder: (_) => AlertDialog(
-        title: const Text("Hapus Kategori"),
-        content: Text(
-          count > 0
-              ? 'Kategori "$name" punya $count alat. Jika dihapus, alat dipindah ke "Uncategorized". Lanjut?'
-              : 'Apakah anda yakin ingin menghapus kategori "$name"?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.red,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      builder:
+          (_) => AlertDialog(
+            title: const Text("Hapus Kategori"),
+            content: Text(
+              count > 0
+                  ? 'Kategori "$name" punya $count alat. Jika dihapus, alat dipindah ke "Uncategorized". Lanjut?'
+                  : 'Apakah anda yakin ingin menghapus kategori "$name"?',
             ),
-            onPressed: () {
-              setState(() {
-                if (!_kategoriList.contains("Uncategorized")) {
-                  _kategoriList.add("Uncategorized");
-                }
-                for (final a in _allAlat) {
-                  if (a['kategori'] == name) a['kategori'] = "Uncategorized";
-                }
-                _kategoriList.remove(name);
-                if (_selectedKategori == name) _selectedKategori = "Semua";
-              });
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("Batal"),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                onPressed: () {
+                  setState(() {
+                    if (!_kategoriList.contains("Uncategorized")) {
+                      _kategoriList.add("Uncategorized");
+                    }
+                    for (final a in _allAlat) {
+                      if (a['kategori'] == name)
+                        a['kategori'] = "Uncategorized";
+                    }
+                    _kategoriList.remove(name);
+                    if (_selectedKategori == name) _selectedKategori = "Semua";
+                  });
 
-              Navigator.pop(context);
-              _toast("Kategori berhasil dihapus");
-            },
-            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
+                  Navigator.pop(context);
+                  _toast("Kategori berhasil dihapus");
+                },
+                child: const Text(
+                  "Hapus",
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -243,13 +282,16 @@ class _AlatAdminState extends State<AlatAdmin> {
   // ==========================
   @override
   Widget build(BuildContext context) {
-    final filteredAlat = _allAlat.where((item) {
-      final matchesSearch =
-          (item['nama'] as String).toLowerCase().contains(_searchQuery.toLowerCase());
-      final matchesKategori =
-          _selectedKategori == "Semua" || item['kategori'] == _selectedKategori;
-      return matchesSearch && matchesKategori;
-    }).toList();
+    final filteredAlat =
+        _allAlat.where((item) {
+          final matchesSearch = (item['nama'] as String).toLowerCase().contains(
+            _searchQuery.toLowerCase(),
+          );
+          final matchesKategori =
+              _selectedKategori == "Semua" ||
+              item['kategori'] == _selectedKategori;
+          return matchesSearch && matchesKategori;
+        }).toList();
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -269,14 +311,19 @@ class _AlatAdminState extends State<AlatAdmin> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Text('Alat',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold)),
+                    Text(
+                      'Alat',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     SizedBox(height: 4),
-                    Text('Kelola dan pantau ketersediaan alat laboratorium',
-                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      'Kelola dan pantau ketersediaan alat laboratorium',
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
                   ],
                 ),
               ),
@@ -288,9 +335,13 @@ class _AlatAdminState extends State<AlatAdmin> {
                 children: [
                   Expanded(
                     child: TextField(
-                      onChanged: (value) => setState(() => _searchQuery = value),
+                      onChanged:
+                          (value) => setState(() => _searchQuery = value),
                       decoration: InputDecoration(
-                        hintText: _isAlatTab ? 'Cari alat ...' : 'Cari (hanya memfilter alat) ...',
+                        hintText:
+                            _isAlatTab
+                                ? 'Cari alat ...'
+                                : 'Cari (hanya memfilter alat) ...',
                         prefixIcon: const Icon(Icons.search, size: 20),
                         filled: true,
                         fillColor: Colors.grey.shade50,
@@ -325,7 +376,10 @@ class _AlatAdminState extends State<AlatAdmin> {
                     AnimatedAlign(
                       duration: const Duration(milliseconds: 250),
                       curve: Curves.easeInOut,
-                      alignment: _isAlatTab ? Alignment.centerLeft : Alignment.centerRight,
+                      alignment:
+                          _isAlatTab
+                              ? Alignment.centerLeft
+                              : Alignment.centerRight,
                       child: FractionallySizedBox(
                         widthFactor: 0.5,
                         child: Container(
@@ -347,7 +401,8 @@ class _AlatAdminState extends State<AlatAdmin> {
                               child: Text(
                                 "Alat",
                                 style: TextStyle(
-                                  color: _isAlatTab ? Colors.white : Colors.grey,
+                                  color:
+                                      _isAlatTab ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -362,7 +417,8 @@ class _AlatAdminState extends State<AlatAdmin> {
                               child: Text(
                                 "Kategori",
                                 style: TextStyle(
-                                  color: !_isAlatTab ? Colors.white : Colors.grey,
+                                  color:
+                                      !_isAlatTab ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),
@@ -377,7 +433,10 @@ class _AlatAdminState extends State<AlatAdmin> {
             ),
 
             Expanded(
-              child: _isAlatTab ? _buildAlatContent(filteredAlat) : _buildKategoriContent(),
+              child:
+                  _isAlatTab
+                      ? _buildAlatContent(filteredAlat)
+                      : _buildKategoriContent(),
             ),
           ],
         ),
@@ -404,20 +463,29 @@ class _AlatAdminState extends State<AlatAdmin> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.filter_alt_outlined, color: Color(0xFF0061CD), size: 18),
+            const Icon(
+              Icons.filter_alt_outlined,
+              color: Color(0xFF0061CD),
+              size: 18,
+            ),
             const SizedBox(width: 4),
             Text(
               _selectedKategori,
               style: const TextStyle(
-                  color: Color(0xFF0061CD), fontSize: 13, fontWeight: FontWeight.bold),
+                color: Color(0xFF0061CD),
+                fontSize: 13,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const Icon(Icons.keyboard_arrow_down, color: Color(0xFF0061CD)),
           ],
         ),
       ),
-      itemBuilder: (context) => _kategoriList
-          .map((item) => PopupMenuItem(value: item, child: Text(item)))
-          .toList(),
+      itemBuilder:
+          (context) =>
+              _kategoriList
+                  .map((item) => PopupMenuItem(value: item, child: Text(item)))
+                  .toList(),
     );
   }
 
@@ -453,9 +521,13 @@ class _AlatAdminState extends State<AlatAdmin> {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: fotoBytes == null
-                      ? const Icon(Icons.inventory_2_outlined, color: Color(0xFF0061CD))
-                      : Image.memory(fotoBytes, fit: BoxFit.cover),
+                  child:
+                      fotoBytes == null
+                          ? const Icon(
+                            Icons.inventory_2_outlined,
+                            color: Color(0xFF0061CD),
+                          )
+                          : Image.memory(fotoBytes, fit: BoxFit.cover),
                 ),
               ),
               const SizedBox(width: 12),
@@ -463,9 +535,14 @@ class _AlatAdminState extends State<AlatAdmin> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item['nama'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text("${item['kategori']} • Stok: ${item['stok']}",
-                        style: const TextStyle(color: Colors.blue, fontSize: 11)),
+                    Text(
+                      item['nama'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "${item['kategori']} • Stok: ${item['stok']}",
+                      style: const TextStyle(color: Colors.blue, fontSize: 11),
+                    ),
                   ],
                 ),
               ),
@@ -478,7 +555,11 @@ class _AlatAdminState extends State<AlatAdmin> {
                     color: Colors.blue.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.blue,
+                    size: 18,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -490,7 +571,11 @@ class _AlatAdminState extends State<AlatAdmin> {
                     color: Colors.red.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -531,16 +616,24 @@ class _AlatAdminState extends State<AlatAdmin> {
                   color: Colors.blue.shade50,
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(Icons.folder_outlined, color: Color(0xFF0061CD)),
+                child: const Icon(
+                  Icons.folder_outlined,
+                  color: Color(0xFF0061CD),
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(kategori, style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text("$count Alat",
-                        style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    Text(
+                      kategori,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    Text(
+                      "$count Alat",
+                      style: const TextStyle(color: Colors.grey, fontSize: 11),
+                    ),
                   ],
                 ),
               ),
@@ -552,7 +645,11 @@ class _AlatAdminState extends State<AlatAdmin> {
                     color: Colors.blue.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
+                  child: const Icon(
+                    Icons.edit_outlined,
+                    color: Colors.blue,
+                    size: 18,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),
@@ -564,7 +661,11 @@ class _AlatAdminState extends State<AlatAdmin> {
                     color: Colors.red.withOpacity(0.08),
                     borderRadius: BorderRadius.circular(10),
                   ),
-                  child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: Colors.red,
+                    size: 18,
+                  ),
                 ),
               ),
             ],
@@ -624,9 +725,9 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
       setState(() => _pickedBytes = bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal pilih foto: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal pilih foto: $e')));
     }
   }
 
@@ -640,9 +741,9 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
       return;
     }
     if (_kategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kategori wajib dipilih')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kategori wajib dipilih')));
       return;
     }
 
@@ -670,7 +771,11 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, 8),
+            ),
           ],
         ),
         child: Form(
@@ -679,8 +784,10 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Tambah Alat',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                const Text(
+                  'Tambah Alat',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
 
                 GestureDetector(
@@ -693,71 +800,103 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: _pickedBytes == null
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.photo_library_outlined,
-                                  color: Color(0xFF0061CD)),
-                              SizedBox(height: 6),
-                              Text('Pilih Foto dari Galeri',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54)),
-                              SizedBox(height: 2),
-                              Text('Tap untuk pilih foto',
-                                  style: TextStyle(fontSize: 10, color: Colors.black45)),
-                            ],
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.memory(_pickedBytes!, fit: BoxFit.cover),
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: InkWell(
-                                    onTap: () => setState(() => _pickedBytes = null),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(6),
-                                      decoration: BoxDecoration(
-                                        color: Colors.black.withOpacity(0.55),
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                      child: const Icon(Icons.close,
-                                          size: 16, color: Colors.white),
-                                    ),
+                    child:
+                        _pickedBytes == null
+                            ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.photo_library_outlined,
+                                  color: Color(0xFF0061CD),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  'Pilih Foto dari Galeri',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
+                                  ),
+                                ),
+                                SizedBox(height: 2),
+                                Text(
+                                  'Tap untuk pilih foto',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.black45,
                                   ),
                                 ),
                               ],
+                            )
+                            : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.memory(
+                                    _pickedBytes!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: InkWell(
+                                      onTap:
+                                          () => setState(
+                                            () => _pickedBytes = null,
+                                          ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.black.withOpacity(0.55),
+                                          borderRadius: BorderRadius.circular(
+                                            10,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.close,
+                                          size: 16,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                   ),
                 ),
 
                 const SizedBox(height: 14),
 
-                const Text('Nama Alat',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Nama Alat',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _input(
                   controller: _namaC,
                   hint: 'tambahkan nama alat',
-                  validator: (v) =>
-                      (v == null || v.trim().isEmpty) ? 'Nama alat wajib diisi' : null,
+                  validator:
+                      (v) =>
+                          (v == null || v.trim().isEmpty)
+                              ? 'Nama alat wajib diisi'
+                              : null,
                 ),
 
                 const SizedBox(height: 12),
 
-                const Text('Stok',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Stok',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _input(
                   controller: _stokC,
                   hint: 'tambahkan stok',
                   keyboardType: TextInputType.number,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Stok wajib diisi';
+                    if (v == null || v.trim().isEmpty)
+                      return 'Stok wajib diisi';
                     final n = int.tryParse(v.trim());
                     if (n == null) return 'Stok harus angka';
                     if (n < 0) return 'Stok tidak boleh minus';
@@ -767,8 +906,10 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
 
                 const SizedBox(height: 12),
 
-                const Text('Kategori',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Kategori',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Container(
                   height: 46,
@@ -782,11 +923,17 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
                     child: DropdownButton<String>(
                       value: _kategori,
                       isExpanded: true,
-                      hint: const Text('pilih kategori produk',
-                          style: TextStyle(color: Colors.black45, fontSize: 12)),
-                      items: widget.categories
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
+                      hint: const Text(
+                        'pilih kategori produk',
+                        style: TextStyle(color: Colors.black45, fontSize: 12),
+                      ),
+                      items:
+                          widget.categories
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
                       onChanged: (v) => setState(() => _kategori = v),
                       icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     ),
@@ -801,17 +948,22 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
                       child: SizedBox(
                         height: 44,
                         child: OutlinedButton(
-                          onPressed: _loading ? null : () => Navigator.pop(context),
+                          onPressed:
+                              _loading ? null : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.grey.shade300,
                             side: BorderSide.none,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w800)),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -824,24 +976,31 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0061CD),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text('Tambah',
-                                  style: TextStyle(
+                          child:
+                              _loading
+                                  ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w800)),
+                                    ),
+                                  )
+                                  : const Text(
+                                    'Tambah',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                         ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -871,7 +1030,10 @@ class _TambahAlatDialogState extends State<TambahAlatDialog> {
           hintText: hint,
           hintStyle: const TextStyle(color: Colors.black38, fontSize: 12),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 12,
+            vertical: 12,
+          ),
         ),
       ),
     );
@@ -943,9 +1105,9 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
       setState(() => _pickedBytes = bytes);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal pilih foto: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal pilih foto: $e')));
     }
   }
 
@@ -953,15 +1115,15 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
     if (!_formKey.currentState!.validate()) return;
 
     if (_pickedBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Foto alat wajib ada')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Foto alat wajib ada')));
       return;
     }
     if (_kategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kategori wajib dipilih')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kategori wajib dipilih')));
       return;
     }
 
@@ -989,7 +1151,11 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, 8),
+            ),
           ],
         ),
         child: Form(
@@ -998,8 +1164,10 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Edit Alat',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+                const Text(
+                  'Edit Alat',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900),
+                ),
                 const SizedBox(height: 12),
 
                 GestureDetector(
@@ -1012,73 +1180,99 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(color: Colors.grey.shade200),
                     ),
-                    child: _pickedBytes == null
-                        ? Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: const [
-                              Icon(Icons.photo_library_outlined,
-                                  color: Color(0xFF0061CD)),
-                              SizedBox(height: 6),
-                              Text('Pilih Foto dari Galeri',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54)),
-                            ],
-                          )
-                        : ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Stack(
-                              fit: StackFit.expand,
-                              children: [
-                                Image.memory(_pickedBytes!, fit: BoxFit.cover),
-                                Positioned(
-                                  right: 8,
-                                  top: 8,
-                                  child: Container(
-                                    padding: const EdgeInsets.all(6),
-                                    decoration: BoxDecoration(
-                                      color: Colors.black.withOpacity(0.55),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: const Text("Ganti",
-                                        style: TextStyle(
-                                            color: Colors.white, fontSize: 10)),
+                    child:
+                        _pickedBytes == null
+                            ? Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: const [
+                                Icon(
+                                  Icons.photo_library_outlined,
+                                  color: Color(0xFF0061CD),
+                                ),
+                                SizedBox(height: 6),
+                                Text(
+                                  'Pilih Foto dari Galeri',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.black54,
                                   ),
                                 ),
                               ],
+                            )
+                            : ClipRRect(
+                              borderRadius: BorderRadius.circular(14),
+                              child: Stack(
+                                fit: StackFit.expand,
+                                children: [
+                                  Image.memory(
+                                    _pickedBytes!,
+                                    fit: BoxFit.cover,
+                                  ),
+                                  Positioned(
+                                    right: 8,
+                                    top: 8,
+                                    child: Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withOpacity(0.55),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: const Text(
+                                        "Ganti",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontSize: 10,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                   ),
                 ),
 
                 const SizedBox(height: 14),
 
-                const Text('Nama Alat',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Nama Alat',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _boxInput(
                   child: TextFormField(
                     controller: _namaC,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Nama alat wajib diisi' : null,
+                    validator:
+                        (v) =>
+                            (v == null || v.trim().isEmpty)
+                                ? 'Nama alat wajib diisi'
+                                : null,
                     decoration: const InputDecoration(
                       border: InputBorder.none,
                       hintText: 'nama alat',
                       hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 12),
 
-                const Text('Stok',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Stok',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _boxInput(
                   child: TextFormField(
                     controller: _stokC,
                     keyboardType: TextInputType.number,
                     validator: (v) {
-                      if (v == null || v.trim().isEmpty) return 'Stok wajib diisi';
+                      if (v == null || v.trim().isEmpty)
+                        return 'Stok wajib diisi';
                       final n = int.tryParse(v.trim());
                       if (n == null) return 'Stok harus angka';
                       if (n < 0) return 'Stok tidak boleh minus';
@@ -1088,15 +1282,20 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
                       border: InputBorder.none,
                       hintText: 'stok',
                       hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
 
                 const SizedBox(height: 12),
 
-                const Text('Kategori',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Kategori',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 Container(
                   height: 46,
@@ -1110,9 +1309,13 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
                     child: DropdownButton<String>(
                       value: _kategori,
                       isExpanded: true,
-                      items: widget.categories
-                          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                          .toList(),
+                      items:
+                          widget.categories
+                              .map(
+                                (c) =>
+                                    DropdownMenuItem(value: c, child: Text(c)),
+                              )
+                              .toList(),
                       onChanged: (v) => setState(() => _kategori = v),
                       icon: const Icon(Icons.keyboard_arrow_down_rounded),
                     ),
@@ -1127,17 +1330,22 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
                       child: SizedBox(
                         height: 44,
                         child: OutlinedButton(
-                          onPressed: _loading ? null : () => Navigator.pop(context),
+                          onPressed:
+                              _loading ? null : () => Navigator.pop(context),
                           style: OutlinedButton.styleFrom(
                             backgroundColor: Colors.grey.shade300,
                             side: BorderSide.none,
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: const Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.black87,
-                                  fontWeight: FontWeight.w800)),
+                          child: const Text(
+                            'Batal',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -1150,24 +1358,31 @@ class _EditAlatDialogState extends State<EditAlatDialog> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFF0061CD),
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
                           ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text('Simpan',
-                                  style: TextStyle(
+                          child:
+                              _loading
+                                  ? const SizedBox(
+                                    width: 18,
+                                    height: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
                                       color: Colors.white,
-                                      fontWeight: FontWeight.w800)),
+                                    ),
+                                  )
+                                  : const Text(
+                                    'Simpan',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
                         ),
                       ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -1239,7 +1454,11 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
           color: Colors.white,
           borderRadius: BorderRadius.circular(18),
           boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
+            BoxShadow(
+              color: Colors.black12,
+              blurRadius: 12,
+              offset: Offset(0, 8),
+            ),
           ],
         ),
         child: Form(
@@ -1248,18 +1467,26 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(widget.title,
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              Text(
+                widget.title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
               const SizedBox(height: 12),
 
-              const Text('Nama Kategori',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const Text(
+                'Nama Kategori',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+              ),
               const SizedBox(height: 6),
               _boxInput(
                 child: TextFormField(
                   controller: _nameC,
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return "Nama kategori wajib diisi";
+                    if (v == null || v.trim().isEmpty)
+                      return "Nama kategori wajib diisi";
                     if (v.trim().length < 2) return "Minimal 2 karakter";
                     return null;
                   },
@@ -1267,15 +1494,20 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                     border: InputBorder.none,
                     hintText: "Masukkan nama kategori",
                     hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
                   ),
                 ),
               ),
 
               if (isEdit) ...[
                 const SizedBox(height: 12),
-                const Text('Jumlah Alat',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+                const Text(
+                  'Jumlah Alat',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+                ),
                 const SizedBox(height: 6),
                 _boxInput(
                   child: TextFormField(
@@ -1283,7 +1515,10 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                     initialValue: "${widget.readOnlyCount} Alat",
                     decoration: const InputDecoration(
                       border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 12,
+                      ),
                     ),
                   ),
                 ),
@@ -1302,11 +1537,16 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                           backgroundColor: Colors.grey.shade300,
                           side: BorderSide.none,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: const Text('Batal',
-                            style: TextStyle(
-                                color: Colors.black87, fontWeight: FontWeight.w800)),
+                        child: const Text(
+                          'Batal',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1322,16 +1562,21 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0061CD),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
-                        child: Text(isEdit ? "Simpan" : "Tambah",
-                            style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.w800)),
+                        child: Text(
+                          isEdit ? "Simpan" : "Tambah",
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ],
-              )
+              ),
             ],
           ),
         ),
