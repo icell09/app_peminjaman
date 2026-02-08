@@ -1,87 +1,10 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:postgrest/postgrest.dart';
 
-// =====================
-// SUPABASE SERVICE (CRUD ALAT + UPLOAD FOTO)
-// =====================
-class AlatSupabaseService {
-  final SupabaseClient _db = Supabase.instance.client;
+import '../../services/alat_service.dart';
 
-  // ✅ FIX: created_at DIHAPUS karena kolomnya tidak ada di tabel
-  Future<List<Map<String, dynamic>>> fetchAlat() async {
-    final res = await _db
-        .from('alat')
-        .select('id_alat,nama_alat,stok,id_kategori,gambar,status')
-        .order('nama_alat', ascending: true);
-
-    return (res as List).cast<Map<String, dynamic>>();
-  }
-
-  Future<String> uploadFoto({
-    required Uint8List bytes,
-    required String filename,
-  }) async {
-    final safeName = filename.isEmpty ? 'foto.jpg' : filename;
-    final path = 'alat/${DateTime.now().millisecondsSinceEpoch}_$safeName';
-
-    await _db.storage.from('alat-images').uploadBinary(
-          path,
-          bytes,
-          fileOptions: const FileOptions(
-            upsert: true,
-            contentType: 'image/jpeg',
-          ),
-        );
-
-    // bucket public
-    return _db.storage.from('alat-images').getPublicUrl(path);
-  }
-
-  Future<void> tambahAlat({
-    required String namaAlat,
-    required int stok,
-    required int idKategori,
-    required String gambar,
-    String status = 'tersedia',
-  }) async {
-    await _db.from('alat').insert({
-      'nama_alat': namaAlat,
-      'stok': stok,
-      'id_kategori': idKategori,
-      'gambar': gambar,
-      'status': status,
-    });
-  }
-
-  Future<void> updateAlat({
-    required String idAlat, // uuid string
-    required String namaAlat,
-    required int stok,
-    required int idKategori,
-    required String gambar,
-    String? status,
-  }) async {
-    final data = <String, dynamic>{
-      'nama_alat': namaAlat,
-      'stok': stok,
-      'id_kategori': idKategori,
-      'gambar': gambar,
-    };
-    if (status != null) data['status'] = status;
-
-    await _db.from('alat').update(data).eq('id_alat', idAlat);
-  }
-
-  Future<void> deleteAlat(String idAlat) async {
-    await _db.from('alat').delete().eq('id_alat', idAlat);
-  }
-}
-
-// =====================
-// PAGE
-// =====================
 class AlatAdmin extends StatefulWidget {
   const AlatAdmin({super.key});
 
@@ -93,48 +16,54 @@ class _AlatAdminState extends State<AlatAdmin> {
   final _svc = AlatSupabaseService();
 
   String _searchQuery = "";
-  String _selectedKategori = "Semua";
   bool _isAlatTab = true;
-  bool _loadingAlat = true;
+  bool _loading = true;
 
-  // Kategori lokal (yang tampil di UI)
-  final List<String> _kategoriList = [
-    "Semua",
-    "Perangkat Keras",
-    "Perangkat Penyimpanan",
-    "Perangkat Jaringan",
-    "Perangkat Output",
-  ];
+  // null => semua
+  int? _selectedKategoriId;
 
+  // {id_kategori:int, nama_kategori:String}
+  final List<Map<String, dynamic>> _kategoriDb = [];
+
+  // alat list
   final List<Map<String, dynamic>> _allAlat = [];
 
   @override
   void initState() {
     super.initState();
-    _loadAlat();
+    _loadAll();
   }
 
   void _toast(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // mapping kategori lokal <-> id_kategori (asumsi 1..n sesuai urutan list tanpa "Semua")
-  int _kategoriNameToId(String namaKategori) {
-    final list = _kategoriList.where((e) => e != "Semua").toList();
-    final idx = list.indexOf(namaKategori);
-    return idx == -1 ? 0 : (idx + 1);
+  Future<void> _loadAll() async {
+    setState(() => _loading = true);
+    try {
+      await Future.wait([_loadKategori(), _loadAlat()]);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
-  String _kategoriIdToName(int? idKategori) {
-    final list = _kategoriList.where((e) => e != "Semua").toList();
-    if (idKategori == null || idKategori <= 0 || idKategori > list.length) {
-      return "Uncategorized";
+  Future<void> _loadKategori() async {
+    try {
+      final data = await _svc.fetchKategori();
+      setState(() {
+        _kategoriDb
+          ..clear()
+          ..addAll(data.map((e) => {
+                'id_kategori': (e['id_kategori'] as num).toInt(),
+                'nama_kategori': e['nama_kategori'] as String,
+              }));
+      });
+    } catch (e) {
+      _toast("Gagal load kategori: ${_svc.prettyDbError(e)}");
     }
-    return list[idKategori - 1];
   }
 
   Future<void> _loadAlat() async {
-    setState(() => _loadingAlat = true);
     try {
       final data = await _svc.fetchAlat();
       setState(() {
@@ -150,15 +79,21 @@ class _AlatAdminState extends State<AlatAdmin> {
               }));
       });
     } catch (e) {
-      _toast("Gagal load alat: $e");
-    } finally {
-      if (mounted) setState(() => _loadingAlat = false);
+      _toast("Gagal load alat: ${_svc.prettyDbError(e)}");
     }
   }
 
-  int _countToolsByCategory(String categoryName) {
-    final int id = _kategoriNameToId(categoryName);
-    return _allAlat.where((a) => (a['id_kategori'] as int?) == id).length;
+  String _kategoriIdToName(int? id) {
+    if (id == null) return "Uncategorized";
+    final k = _kategoriDb.firstWhere(
+      (e) => (e['id_kategori'] as int) == id,
+      orElse: () => {},
+    );
+    return (k['nama_kategori'] as String?) ?? "Uncategorized";
+  }
+
+  int _countToolsByCategoryId(int idKategori) {
+    return _allAlat.where((a) => (a['id_kategori'] as int?) == idKategori).length;
   }
 
   // ==========================
@@ -169,20 +104,18 @@ class _AlatAdminState extends State<AlatAdmin> {
       context: context,
       barrierDismissible: true,
       builder: (_) => TambahAlatDialog(
-        categories: _kategoriList.where((e) => e != "Semua").toList(),
+        categories: _kategoriDb,
         onSubmit: (data) async {
           try {
             final Uint8List bytes = data['fotoBytes'] as Uint8List;
-            final String filename =
-                (data['fotoFilename'] as String?) ?? 'foto.jpg';
+            final String filename = (data['fotoFilename'] as String?) ?? 'foto.jpg';
 
-            final String gambar =
-                await _svc.uploadFoto(bytes: bytes, filename: filename);
+            final String gambar = await _svc.uploadFoto(bytes: bytes, filename: filename);
 
             await _svc.tambahAlat(
               namaAlat: data['nama'] as String,
               stok: data['stok'] as int,
-              idKategori: _kategoriNameToId(data['kategori'] as String),
+              idKategori: data['kategoriId'] as int,
               gambar: gambar,
             );
 
@@ -190,7 +123,7 @@ class _AlatAdminState extends State<AlatAdmin> {
             _toast('Alat berhasil ditambahkan');
             await _loadAlat();
           } catch (e) {
-            _toast("Gagal tambah alat: $e");
+            _toast("Gagal tambah alat: ${_svc.prettyDbError(e)}");
           }
         },
       ),
@@ -202,48 +135,36 @@ class _AlatAdminState extends State<AlatAdmin> {
       context: context,
       barrierDismissible: true,
       builder: (_) => EditAlatDialog(
-        categories: _kategoriList.where((e) => e != "Semua").toList(),
+        categories: _kategoriDb,
         initialNama: item['nama_alat'] as String,
         initialStok: (item['stok'] as int).toString(),
-        initialKategori: _kategoriIdToName(item['id_kategori'] as int?),
+        initialKategoriId: item['id_kategori'] as int?,
         initialFotoUrl: item['gambar'] as String?,
         onSubmit: (data) async {
           try {
             final String idAlat = item['id_alat'] as String;
-
             final Uint8List? newBytes = data['fotoBytes'] as Uint8List?;
-            final String filename =
-                (data['fotoFilename'] as String?) ?? 'foto.jpg';
+            final String filename = (data['fotoFilename'] as String?) ?? 'foto.jpg';
+            final int idKategori = data['kategoriId'] as int;
 
-            final int idKategori =
-                _kategoriNameToId(data['kategori'] as String);
-
+            String gambarFinal = (item['gambar'] as String?) ?? '';
             if (newBytes != null) {
-              final String newGambar =
-                  await _svc.uploadFoto(bytes: newBytes, filename: filename);
-
-              await _svc.updateAlat(
-                idAlat: idAlat,
-                namaAlat: data['nama'] as String,
-                stok: data['stok'] as int,
-                idKategori: idKategori,
-                gambar: newGambar,
-              );
-            } else {
-              await _svc.updateAlat(
-                idAlat: idAlat,
-                namaAlat: data['nama'] as String,
-                stok: data['stok'] as int,
-                idKategori: idKategori,
-                gambar: (item['gambar'] as String?) ?? '',
-              );
+              gambarFinal = await _svc.uploadFoto(bytes: newBytes, filename: filename);
             }
+
+            await _svc.updateAlat(
+              idAlat: idAlat,
+              namaAlat: data['nama'] as String,
+              stok: data['stok'] as int,
+              idKategori: idKategori,
+              gambar: gambarFinal,
+            );
 
             if (mounted) Navigator.pop(context);
             _toast("Alat berhasil diupdate");
             await _loadAlat();
           } catch (e) {
-            _toast("Gagal update alat: $e");
+            _toast("Gagal update alat: ${_svc.prettyDbError(e)}");
           }
         },
       ),
@@ -255,8 +176,7 @@ class _AlatAdminState extends State<AlatAdmin> {
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Hapus Alat"),
-        content:
-            Text('Apakah anda yakin ingin menghapus "${item['nama_alat']}"?'),
+        content: Text('Apakah anda yakin ingin menghapus "${item['nama_alat']}"?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -265,8 +185,7 @@ class _AlatAdminState extends State<AlatAdmin> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
               try {
@@ -276,7 +195,7 @@ class _AlatAdminState extends State<AlatAdmin> {
                 _toast("Alat berhasil dihapus");
                 await _loadAlat();
               } catch (e) {
-                _toast("Gagal hapus alat: $e");
+                _toast("Gagal hapus alat: ${_svc.prettyDbError(e)}");
               }
             },
             child: const Text("Hapus", style: TextStyle(color: Colors.white)),
@@ -287,7 +206,7 @@ class _AlatAdminState extends State<AlatAdmin> {
   }
 
   // ==========================
-  // CRUD: KATEGORI (LOKAL)
+  // CRUD: KATEGORI
   // ==========================
   void _openTambahKategori() {
     showDialog(
@@ -297,30 +216,38 @@ class _AlatAdminState extends State<AlatAdmin> {
         title: "Tambah Kategori",
         initialName: "",
         readOnlyCount: null,
-        onSubmit: (name) {
+        onSubmit: (name) async {
           final newName = name.trim();
           if (newName.isEmpty) return;
 
-          final exists = _kategoriList
-              .where((k) => k != "Semua")
-              .any((k) => k.toLowerCase() == newName.toLowerCase());
-
+          // ✅ validasi duplikat (case-insensitive) di Flutter
+          final exists = _kategoriDb.any((k) =>
+              (k['nama_kategori'] as String).toLowerCase() == newName.toLowerCase());
           if (exists) {
             _toast("Kategori sudah ada");
             return;
           }
 
-          setState(() => _kategoriList.add(newName));
-          Navigator.pop(context);
-          _toast("Kategori berhasil ditambahkan");
+          try {
+            await _svc.tambahKategori(nama: newName);
+            if (mounted) Navigator.pop(context);
+            _toast("Kategori berhasil ditambahkan");
+            await _loadKategori();
+          } on PostgrestException catch (e) {
+            if (e.code == '23505') {
+              _toast("Kategori sudah ada");
+            } else {
+              _toast("Gagal tambah kategori: ${e.message}");
+            }
+          } catch (e) {
+            _toast("Gagal tambah kategori: ${_svc.prettyDbError(e)}");
+          }
         },
       ),
     );
   }
 
-  void _openEditKategori(String oldName) {
-    final count = _countToolsByCategory(oldName);
-
+  void _openEditKategoriDb(int id, String oldName, int count) {
     showDialog(
       context: context,
       barrierDismissible: true,
@@ -328,46 +255,46 @@ class _AlatAdminState extends State<AlatAdmin> {
         title: "Edit Kategori",
         initialName: oldName,
         readOnlyCount: count,
-        onSubmit: (newNameRaw) {
+        onSubmit: (newNameRaw) async {
           final newName = newNameRaw.trim();
           if (newName.isEmpty) return;
-
-          if (newName == oldName) {
+          if (newName.toLowerCase() == oldName.toLowerCase()) {
             Navigator.pop(context);
             return;
           }
 
-          final exists = _kategoriList
-              .where((k) => k != "Semua")
-              .any((k) => k.toLowerCase() == newName.toLowerCase());
+          // ✅ validasi duplikat nama kategori (selain dirinya sendiri)
+          final exists = _kategoriDb.any((k) {
+            final nama = (k['nama_kategori'] as String);
+            final kid = (k['id_kategori'] as int);
+            return kid != id && nama.toLowerCase() == newName.toLowerCase();
+          });
           if (exists) {
             _toast("Nama kategori sudah dipakai");
             return;
           }
 
-          setState(() {
-            final idx = _kategoriList.indexOf(oldName);
-            if (idx != -1) _kategoriList[idx] = newName;
-            if (_selectedKategori == oldName) _selectedKategori = newName;
-          });
-
-          Navigator.pop(context);
-          _toast("Kategori berhasil diupdate");
+          try {
+            await _svc.updateKategori(idKategori: id, nama: newName);
+            if (mounted) Navigator.pop(context);
+            _toast("Kategori berhasil diupdate");
+            await _loadKategori();
+          } catch (e) {
+            _toast("Gagal update kategori: ${_svc.prettyDbError(e)}");
+          }
         },
       ),
     );
   }
 
-  void _openDeleteKategori(String name) {
-    final count = _countToolsByCategory(name);
-
+  void _openDeleteKategoriDb(int id, String name, int count) {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         title: const Text("Hapus Kategori"),
         content: Text(
           count > 0
-              ? 'Kategori "$name" punya $count alat. Jika dihapus, itu hanya menghapus dari list lokal. Lanjut?'
+              ? 'Kategori "$name" punya $count alat. Jika dihapus, alat bisa orphan kecuali FK di DB pakai ON DELETE SET NULL/RESTRICT. Lanjut hapus?'
               : 'Apakah anda yakin ingin menghapus kategori "$name"?',
         ),
         actions: [
@@ -378,16 +305,22 @@ class _AlatAdminState extends State<AlatAdmin> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.red,
-              shape:
-                  RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
             onPressed: () async {
-              setState(() {
-                _kategoriList.remove(name);
-                if (_selectedKategori == name) _selectedKategori = "Semua";
-              });
-              if (mounted) Navigator.pop(context);
-              _toast("Kategori berhasil dihapus (lokal)");
+              try {
+                await _svc.deleteKategori(id);
+
+                if (_selectedKategoriId == id) {
+                  setState(() => _selectedKategoriId = null);
+                }
+
+                if (mounted) Navigator.pop(context);
+                _toast("Kategori berhasil dihapus");
+                await Future.wait([_loadKategori(), _loadAlat()]);
+              } catch (e) {
+                _toast("Gagal hapus kategori: ${_svc.prettyDbError(e)}");
+              }
             },
             child: const Text("Hapus", style: TextStyle(color: Colors.white)),
           ),
@@ -406,8 +339,8 @@ class _AlatAdminState extends State<AlatAdmin> {
           .toLowerCase()
           .contains(_searchQuery.toLowerCase());
 
-      final matchesKategori = _selectedKategori == "Semua" ||
-          _kategoriIdToName(item['id_kategori'] as int?) == _selectedKategori;
+      final matchesKategori =
+          _selectedKategoriId == null || (item['id_kategori'] as int?) == _selectedKategoriId;
 
       return matchesSearch && matchesKategori;
     }).toList();
@@ -415,7 +348,7 @@ class _AlatAdminState extends State<AlatAdmin> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: _loadingAlat
+        child: _loading
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
@@ -439,50 +372,42 @@ class _AlatAdminState extends State<AlatAdmin> {
                                   fontWeight: FontWeight.bold)),
                           SizedBox(height: 4),
                           Text('Kelola dan pantau ketersediaan alat laboratorium',
-                              style:
-                                  TextStyle(color: Colors.white70, fontSize: 12)),
+                              style: TextStyle(color: Colors.white70, fontSize: 12)),
                         ],
                       ),
                     ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
                         Expanded(
                           child: TextField(
-                            onChanged: (value) =>
-                                setState(() => _searchQuery = value),
+                            onChanged: (value) => setState(() => _searchQuery = value),
                             decoration: InputDecoration(
-                              hintText: _isAlatTab
-                                  ? 'Cari alat ...'
-                                  : 'Cari (hanya memfilter alat) ...',
+                              hintText: _isAlatTab ? 'Cari alat ...' : 'Cari (hanya memfilter alat) ...',
                               prefixIcon: const Icon(Icons.search, size: 20),
                               filled: true,
                               fillColor: Colors.grey.shade50,
                               contentPadding: EdgeInsets.zero,
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade200),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
                               ),
                               enabledBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
-                                borderSide:
-                                    BorderSide(color: Colors.grey.shade200),
+                                borderSide: BorderSide(color: Colors.grey.shade200),
                               ),
                             ),
                           ),
                         ),
                         const SizedBox(width: 10),
-                        _buildFilterManual(),
+                        _buildFilterKategoriPopup(),
                       ],
                     ),
                   ),
                   Padding(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                     child: Container(
                       height: 50,
                       decoration: BoxDecoration(
@@ -494,9 +419,7 @@ class _AlatAdminState extends State<AlatAdmin> {
                           AnimatedAlign(
                             duration: const Duration(milliseconds: 250),
                             curve: Curves.easeInOut,
-                            alignment: _isAlatTab
-                                ? Alignment.centerLeft
-                                : Alignment.centerRight,
+                            alignment: _isAlatTab ? Alignment.centerLeft : Alignment.centerRight,
                             child: FractionallySizedBox(
                               widthFactor: 0.5,
                               child: Container(
@@ -512,16 +435,13 @@ class _AlatAdminState extends State<AlatAdmin> {
                             children: [
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _isAlatTab = true),
+                                  onTap: () => setState(() => _isAlatTab = true),
                                   behavior: HitTestBehavior.opaque,
                                   child: Center(
                                     child: Text(
                                       "Alat",
                                       style: TextStyle(
-                                        color: _isAlatTab
-                                            ? Colors.white
-                                            : Colors.grey,
+                                        color: _isAlatTab ? Colors.white : Colors.grey,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -530,16 +450,13 @@ class _AlatAdminState extends State<AlatAdmin> {
                               ),
                               Expanded(
                                 child: GestureDetector(
-                                  onTap: () =>
-                                      setState(() => _isAlatTab = false),
+                                  onTap: () => setState(() => _isAlatTab = false),
                                   behavior: HitTestBehavior.opaque,
                                   child: Center(
                                     child: Text(
                                       "Kategori",
                                       style: TextStyle(
-                                        color: !_isAlatTab
-                                            ? Colors.white
-                                            : Colors.grey,
+                                        color: !_isAlatTab ? Colors.white : Colors.grey,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -553,9 +470,7 @@ class _AlatAdminState extends State<AlatAdmin> {
                     ),
                   ),
                   Expanded(
-                    child: _isAlatTab
-                        ? _buildAlatContent(filteredAlat)
-                        : _buildKategoriContent(),
+                    child: _isAlatTab ? _buildAlatContent(filteredAlat) : _buildKategoriContent(),
                   ),
                 ],
               ),
@@ -568,9 +483,9 @@ class _AlatAdminState extends State<AlatAdmin> {
     );
   }
 
-  Widget _buildFilterManual() {
-    return PopupMenuButton<String>(
-      onSelected: (String value) => setState(() => _selectedKategori = value),
+  Widget _buildFilterKategoriPopup() {
+    return PopupMenuButton<int?>(
+      onSelected: (val) => setState(() => _selectedKategoriId = val),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
@@ -581,23 +496,25 @@ class _AlatAdminState extends State<AlatAdmin> {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.filter_alt_outlined,
-                color: Color(0xFF0061CD), size: 18),
+            const Icon(Icons.filter_alt_outlined, color: Color(0xFF0061CD), size: 18),
             const SizedBox(width: 4),
             Text(
-              _selectedKategori,
+              _selectedKategoriId == null ? "Semua" : _kategoriIdToName(_selectedKategoriId),
               style: const TextStyle(
-                  color: Color(0xFF0061CD),
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold),
+                  color: Color(0xFF0061CD), fontSize: 13, fontWeight: FontWeight.bold),
             ),
             const Icon(Icons.keyboard_arrow_down, color: Color(0xFF0061CD)),
           ],
         ),
       ),
-      itemBuilder: (context) => _kategoriList
-          .map((item) => PopupMenuItem(value: item, child: Text(item)))
-          .toList(),
+      itemBuilder: (context) => [
+        const PopupMenuItem<int?>(value: null, child: Text("Semua")),
+        ..._kategoriDb.map((k) {
+          final id = (k['id_kategori'] as int);
+          final nama = (k['nama_kategori'] as String);
+          return PopupMenuItem<int?>(value: id, child: Text(nama));
+        }).toList(),
+      ],
     );
   }
 
@@ -633,14 +550,12 @@ class _AlatAdminState extends State<AlatAdmin> {
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: (fotoUrl == null || fotoUrl.isEmpty)
-                        ? const Icon(Icons.inventory_2_outlined,
-                            color: Color(0xFF0061CD))
+                        ? const Icon(Icons.inventory_2_outlined, color: Color(0xFF0061CD))
                         : Image.network(
                             fotoUrl,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.broken_image,
-                              color: Color(0xFF0061CD)),
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.broken_image, color: Color(0xFF0061CD)),
                           ),
                   ),
                 ),
@@ -653,7 +568,8 @@ class _AlatAdminState extends State<AlatAdmin> {
                           style: const TextStyle(fontWeight: FontWeight.bold)),
                       Text(
                         "${_kategoriIdToName(item['id_kategori'] as int?)} • Stok: ${item['stok']}",
-                        style: const TextStyle(color: Colors.blue, fontSize: 11)),
+                        style: const TextStyle(color: Colors.blue, fontSize: 11),
+                      ),
                     ],
                   ),
                 ),
@@ -665,8 +581,7 @@ class _AlatAdminState extends State<AlatAdmin> {
                       color: Colors.blue.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.edit_outlined,
-                        color: Colors.blue, size: 18),
+                    child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -678,8 +593,7 @@ class _AlatAdminState extends State<AlatAdmin> {
                       color: Colors.red.withOpacity(0.08),
                       borderRadius: BorderRadius.circular(10),
                     ),
-                    child: const Icon(Icons.delete_outline,
-                        color: Colors.red, size: 18),
+                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                   ),
                 ),
               ],
@@ -691,682 +605,82 @@ class _AlatAdminState extends State<AlatAdmin> {
   }
 
   Widget _buildKategoriContent() {
-    final list = _kategoriList.where((k) => k != "Semua").toList();
-    if (list.isEmpty) return const Center(child: Text("Kategori belum ada"));
+    if (_kategoriDb.isEmpty) return const Center(child: Text("Kategori belum ada"));
 
-    return ListView.builder(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      itemCount: list.length,
-      itemBuilder: (context, index) {
-        final kategori = list[index];
-        final count = _countToolsByCategory(kategori);
+    return RefreshIndicator(
+      onRefresh: _loadKategori,
+      child: ListView.builder(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _kategoriDb.length,
+        itemBuilder: (context, index) {
+          final k = _kategoriDb[index];
+          final id = (k['id_kategori'] as int);
+          final nama = (k['nama_kategori'] as String);
+          final count = _countToolsByCategoryId(id);
 
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.grey.shade100),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 45,
-                height: 45,
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.folder_outlined,
-                    color: Color(0xFF0061CD)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(kategori,
-                        style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text("$count Alat",
-                        style: const TextStyle(color: Colors.grey, fontSize: 11)),
-                  ],
-                ),
-              ),
-              InkWell(
-                onTap: () => _openEditKategori(kategori),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.edit_outlined,
-                      color: Colors.blue, size: 18),
-                ),
-              ),
-              const SizedBox(width: 10),
-              InkWell(
-                onTap: () => _openDeleteKategori(kategori),
-                child: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.delete_outline,
-                      color: Colors.red, size: 18),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-// =====================
-// DIALOG TAMBAH ALAT (FIX UI: Foto di atas, kategori default "Pilih kategori",
-// error text tampil di bawah field)
-// =====================
-class TambahAlatDialog extends StatefulWidget {
-  final List<String> categories;
-  final void Function(Map<String, dynamic> data) onSubmit;
-
-  const TambahAlatDialog({
-    super.key,
-    required this.categories,
-    required this.onSubmit,
-  });
-
-  @override
-  State<TambahAlatDialog> createState() => _TambahAlatDialogState();
-}
-
-class _TambahAlatDialogState extends State<TambahAlatDialog> {
-  final _formKey = GlobalKey<FormState>();
-
-  late final TextEditingController _namaC;
-  late final TextEditingController _stokC;
-
-  final ImagePicker _picker = ImagePicker();
-  Uint8List? _fotoBytes;
-  String? _fotoFilename;
-
-  // ✅ default null => hint tampil "Pilih kategori"
-  String? _selectedKategori;
-
-  bool _loading = false;
-
-  bool _submitted = false;
-
-  String? _errNama;
-  String? _errStok;
-  String? _errKategori;
-  String? _errFoto;
-
-  @override
-  void initState() {
-    super.initState();
-    _namaC = TextEditingController();
-    _stokC = TextEditingController();
-    _selectedKategori = null; // ✅ jangan auto pilih
-  }
-
-  @override
-  void dispose() {
-    _namaC.dispose();
-    _stokC.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 1080,
-    );
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _fotoBytes = bytes;
-        _fotoFilename = pickedFile.name;
-      });
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedKategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Kategori wajib dipilih")),
-      );
-      return;
-    }
-
-    if (_fotoBytes == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Pilih foto terlebih dahulu")),
-      );
-      return;
-    }
-
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 150));
-
-    widget.onSubmit({
-      'nama': _namaC.text.trim(),
-      'stok': int.parse(_stokC.text.trim()),
-      'kategori': _selectedKategori!,
-      'fotoBytes': _fotoBytes,
-      'fotoFilename': _fotoFilename ?? 'foto.jpg',
-    });
-
-    setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
-          ],
-        ),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          return Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade100),
+            ),
+            child: Row(
               children: [
-                const Text("Tambah Alat",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-
-                const Text('Foto',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
+                Container(
+                  width: 45,
+                  height: 45,
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.folder_outlined, color: Color(0xFF0061CD)),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(nama, style: const TextStyle(fontWeight: FontWeight.bold)),
+                      Text("$count Alat", style: const TextStyle(color: Colors.grey, fontSize: 11)),
+                    ],
+                  ),
+                ),
                 InkWell(
-                  onTap: _pickImage,
+                  onTap: () => _openEditKategoriDb(id, nama, count),
                   child: Container(
-                    height: 140,
-                    width: double.infinity,
+                    padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
+                      color: Colors.blue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    child: _fotoBytes != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.memory(_fotoBytes!, fit: BoxFit.cover),
-                          )
-                        : Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: const [
-                                Icon(Icons.add_photo_alternate,
-                                    color: Color(0xFF0061CD)),
-                                SizedBox(height: 6),
-                                Text("Pilih Foto",
-                                    style: TextStyle(
-                                        color: Colors.black54, fontSize: 12)),
-                              ],
-                            ),
-                          ),
+                    child: const Icon(Icons.edit_outlined, color: Colors.blue, size: 18),
                   ),
                 ),
-
-                const SizedBox(height: 14),
-
-                const Text('Nama Alat',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: TextFormField(
-                    controller: _namaC,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? "Nama alat wajib diisi" : null,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Masukkan nama alat",
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                const SizedBox(width: 10),
+                InkWell(
+                  onTap: () => _openDeleteKategoriDb(id, nama, count),
+                  child: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                     onChanged: (_) {
-                    if (_submitted && _errNama != null) {
-                      setState(() => _errNama = null);
-                    }
-                   }
+                    child: const Icon(Icons.delete_outline, color: Colors.red, size: 18),
                   ),
                 ),
-
-                const SizedBox(height: 12),
-
-                const Text('Stok',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: TextFormField(
-                    controller: _stokC,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return "Stok wajib diisi";
-                      if (int.tryParse(v.trim()) == null) return "Stok harus berupa angka";
-                      return null;
-                    },
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Masukkan jumlah stok",
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                const Text('Kategori',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedKategori,
-                      hint: const Text(
-                        "Pilih kategori",
-                        style: TextStyle(color: Colors.black38, fontSize: 12),
-                      ),
-                      items: widget.categories
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (val) => setState(() => _selectedKategori = val),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: OutlinedButton(
-                          onPressed: _loading ? null : () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade300,
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.black87, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0061CD),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text("Tambah",
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
               ],
             ),
-          ),
-        ),
+          );
+        },
       ),
-    );
-  }
-
-  Widget _boxInputNoFixedHeight({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: child,
     );
   }
 }
 
 // =====================
-// DIALOG EDIT ALAT (Foto di atas, error di bawah field)
-// =====================
-class EditAlatDialog extends StatefulWidget {
-  final List<String> categories;
-  final String initialNama;
-  final String initialStok;
-  final String initialKategori;
-  final String? initialFotoUrl;
-  final void Function(Map<String, dynamic> data) onSubmit;
-
-  const EditAlatDialog({
-    super.key,
-    required this.categories,
-    required this.initialNama,
-    required this.initialStok,
-    required this.initialKategori,
-    required this.initialFotoUrl,
-    required this.onSubmit,
-  });
-
-  @override
-  State<EditAlatDialog> createState() => _EditAlatDialogState();
-}
-
-class _EditAlatDialogState extends State<EditAlatDialog> {
-  final _formKey = GlobalKey<FormState>();
-
-  late final TextEditingController _namaC;
-  late final TextEditingController _stokC;
-
-  final ImagePicker _picker = ImagePicker();
-  Uint8List? _fotoBytes;
-  String? _fotoFilename;
-
-  // edit: default kategori dari data lama
-  late String? _selectedKategori;
-
-  bool _loading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _namaC = TextEditingController(text: widget.initialNama);
-    _stokC = TextEditingController(text: widget.initialStok);
-    _selectedKategori = widget.initialKategori;
-  }
-
-  @override
-  void dispose() {
-    _namaC.dispose();
-    _stokC.dispose();
-    super.dispose();
-  }
-
-  Future<void> _pickImage() async {
-    final pickedFile = await _picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
-      maxWidth: 1080,
-    );
-    if (pickedFile != null) {
-      final bytes = await pickedFile.readAsBytes();
-      setState(() {
-        _fotoBytes = bytes;
-        _fotoFilename = pickedFile.name;
-      });
-    }
-  }
-
-  Future<void> _submit() async {
-    if (!_formKey.currentState!.validate()) return;
-
-    if (_selectedKategori == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Kategori wajib dipilih")),
-      );
-      return;
-    }
-
-    setState(() => _loading = true);
-    await Future.delayed(const Duration(milliseconds: 150));
-
-    widget.onSubmit({
-      'nama': _namaC.text.trim(),
-      'stok': int.parse(_stokC.text.trim()),
-      'kategori': _selectedKategori!,
-      'fotoBytes': _fotoBytes, // boleh null
-      'fotoFilename': _fotoFilename ?? 'foto.jpg',
-    });
-
-    setState(() => _loading = false);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(18),
-          boxShadow: const [
-            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
-          ],
-        ),
-        child: Form(
-          key: _formKey,
-          autovalidateMode: AutovalidateMode.onUserInteraction,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text("Edit Alat",
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
-                const SizedBox(height: 12),
-
-                const Text('Foto',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                InkWell(
-                  onTap: _pickImage,
-                  child: Container(
-                    height: 140,
-                    width: double.infinity,
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade100,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: _fotoBytes != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(12),
-                            child: Image.memory(_fotoBytes!, fit: BoxFit.cover),
-                          )
-                        : (widget.initialFotoUrl != null &&
-                                widget.initialFotoUrl!.isNotEmpty)
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  widget.initialFotoUrl!,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Center(
-                                    child: Icon(Icons.broken_image,
-                                        color: Color(0xFF0061CD)),
-                                  ),
-                                ),
-                              )
-                            : Center(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: const [
-                                    Icon(Icons.add_photo_alternate,
-                                        color: Color(0xFF0061CD)),
-                                    SizedBox(height: 6),
-                                    Text("Pilih Foto Baru",
-                                        style: TextStyle(
-                                            color: Colors.black54, fontSize: 12)),
-                                  ],
-                                ),
-                              ),
-                  ),
-                ),
-
-                const SizedBox(height: 14),
-
-                const Text('Nama Alat',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: TextFormField(
-                    controller: _namaC,
-                    validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? "Nama alat wajib diisi" : null,
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Masukkan nama alat",
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                const Text('Stok',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: TextFormField(
-                    controller: _stokC,
-                    keyboardType: TextInputType.number,
-                    validator: (v) {
-                      if (v == null || v.trim().isEmpty) return "Stok wajib diisi";
-                      if (int.tryParse(v.trim()) == null) return "Stok harus berupa angka";
-                      return null;
-                    },
-                    decoration: const InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Masukkan jumlah stok",
-                      hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
-                      contentPadding:
-                          EdgeInsets.symmetric(horizontal: 12, vertical: 12),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                const Text('Kategori',
-                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-                const SizedBox(height: 6),
-                _boxInputNoFixedHeight(
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedKategori,
-                      hint: const Text(
-                        "Pilih kategori",
-                        style: TextStyle(color: Colors.black38, fontSize: 12),
-                      ),
-                      items: widget.categories
-                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (val) => setState(() => _selectedKategori = val),
-                    ),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: OutlinedButton(
-                          onPressed: _loading ? null : () => Navigator.pop(context),
-                          style: OutlinedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade300,
-                            side: BorderSide.none,
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: const Text('Batal',
-                              style: TextStyle(
-                                  color: Colors.black87, fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: SizedBox(
-                        height: 44,
-                        child: ElevatedButton(
-                          onPressed: _loading ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF0061CD),
-                            shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: _loading
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2, color: Colors.white),
-                                )
-                              : const Text("Simpan",
-                                  style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w800)),
-                        ),
-                      ),
-                    ),
-                  ],
-                )
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _boxInputNoFixedHeight({required Widget child}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
-      child: child,
-    );
-  }
-}
-
-// =====================
-// DIALOG TAMBAH/EDIT KATEGORI (LOKAL)
+// DIALOG FORM KATEGORI
 // =====================
 class KategoriFormDialog extends StatefulWidget {
   final String title;
@@ -1378,8 +692,8 @@ class KategoriFormDialog extends StatefulWidget {
     super.key,
     required this.title,
     required this.initialName,
+    required this.readOnlyCount,
     required this.onSubmit,
-    this.readOnlyCount,
   });
 
   @override
@@ -1387,7 +701,6 @@ class KategoriFormDialog extends StatefulWidget {
 }
 
 class _KategoriFormDialogState extends State<KategoriFormDialog> {
-  final _formKey = GlobalKey<FormState>();
   late final TextEditingController _nameC;
 
   @override
@@ -1404,8 +717,6 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final isEdit = widget.readOnlyCount != null;
-
     return Dialog(
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -1418,10 +729,8 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
             BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
           ],
         ),
-        child: Form(
-          key: _formKey,
+        child: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(widget.title,
@@ -1430,14 +739,14 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
               const Text('Nama Kategori',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
               const SizedBox(height: 6),
-              _boxInputFixedHeight(
-                child: TextFormField(
+              Container(
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.grey.shade200),
+                ),
+                child: TextField(
                   controller: _nameC,
-                  validator: (v) {
-                    if (v == null || v.trim().isEmpty) return "Nama kategori wajib diisi";
-                    if (v.trim().length < 2) return "Minimal 2 karakter";
-                    return null;
-                  },
                   decoration: const InputDecoration(
                     border: InputBorder.none,
                     hintText: "Masukkan nama kategori",
@@ -1446,6 +755,11 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                   ),
                 ),
               ),
+              if (widget.readOnlyCount != null) ...[
+                const SizedBox(height: 12),
+                Text("Alat di kategori: ${widget.readOnlyCount}",
+                    style: const TextStyle(color: Colors.grey, fontSize: 12)),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -1457,12 +771,10 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                         style: OutlinedButton.styleFrom(
                           backgroundColor: Colors.grey.shade300,
                           side: BorderSide.none,
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         child: const Text('Batal',
-                            style: TextStyle(
-                                color: Colors.black87, fontWeight: FontWeight.w800)),
+                            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800)),
                       ),
                     ),
                   ),
@@ -1471,18 +783,312 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
                     child: SizedBox(
                       height: 44,
                       child: ElevatedButton(
-                        onPressed: () {
-                          if (!_formKey.currentState!.validate()) return;
-                          widget.onSubmit(_nameC.text);
-                        },
+                        onPressed: () => widget.onSubmit(_nameC.text),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF0061CD),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
-                        child: Text(isEdit ? "Simpan" : "Tambah",
-                            style: const TextStyle(
-                                color: Colors.white, fontWeight: FontWeight.w800)),
+                        child: const Text("Simpan",
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// =====================
+// DIALOG TAMBAH ALAT
+// =====================
+class TambahAlatDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> categories; // {id_kategori, nama_kategori}
+  final void Function(Map<String, dynamic> data) onSubmit;
+
+  const TambahAlatDialog({
+    super.key,
+    required this.categories,
+    required this.onSubmit,
+  });
+
+  @override
+  State<TambahAlatDialog> createState() => _TambahAlatDialogState();
+}
+
+class _TambahAlatDialogState extends State<TambahAlatDialog> {
+  late final TextEditingController _namaC;
+  late final TextEditingController _stokC;
+
+  final ImagePicker _picker = ImagePicker();
+  Uint8List? _fotoBytes;
+  String? _fotoFilename;
+
+  int? _selectedKategoriId;
+  bool _loading = false;
+
+  bool _showError = false;
+  String? _errFoto;
+  String? _errNama;
+  String? _errStok;
+  String? _errKategori;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaC = TextEditingController();
+    _stokC = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _namaC.dispose();
+    _stokC.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1080,
+    );
+    if (pickedFile == null) return;
+
+    final bytes = await pickedFile.readAsBytes();
+    setState(() {
+      _fotoBytes = bytes;
+      _fotoFilename = pickedFile.name;
+      if (_showError) _errFoto = null;
+    });
+  }
+
+  bool _validate() {
+    String? errFoto;
+    String? errNama;
+    String? errStok;
+    String? errKategori;
+
+    if (_fotoBytes == null) errFoto = "Foto wajib dipilih";
+    if (_namaC.text.trim().isEmpty) errNama = "Nama alat wajib diisi";
+
+    final stokRaw = _stokC.text.trim();
+    if (stokRaw.isEmpty) {
+      errStok = "Stok wajib diisi";
+    } else {
+      final stokVal = int.tryParse(stokRaw);
+      if (stokVal == null) errStok = "Stok harus berupa angka";
+      if (stokVal != null && stokVal < 0) errStok = "Stok tidak boleh minus";
+    }
+
+    if (_selectedKategoriId == null) errKategori = "Kategori wajib dipilih";
+
+    setState(() {
+      _errFoto = errFoto;
+      _errNama = errNama;
+      _errStok = errStok;
+      _errKategori = errKategori;
+    });
+
+    return errFoto == null && errNama == null && errStok == null && errKategori == null;
+  }
+
+  Future<void> _submit() async {
+    setState(() => _showError = true);
+    final ok = _validate();
+    if (!ok) return;
+
+    setState(() => _loading = true);
+    try {
+      widget.onSubmit({
+        'nama': _namaC.text.trim(),
+        'stok': int.parse(_stokC.text.trim()),
+        'kategoriId': _selectedKategoriId!,
+        'fotoBytes': _fotoBytes!,
+        'fotoFilename': _fotoFilename ?? 'foto.jpg',
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Tambah Alat",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+
+              const Text('Foto', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickImage,
+                child: Container(
+                  height: 140,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: _fotoBytes != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(_fotoBytes!, fit: BoxFit.cover),
+                        )
+                      : Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.add_photo_alternate, color: Color(0xFF0061CD)),
+                              SizedBox(height: 6),
+                              Text("Pilih Foto",
+                                  style: TextStyle(color: Colors.black54, fontSize: 12)),
+                            ],
+                          ),
+                        ),
+                ),
+              ),
+              if (_showError && _errFoto != null) ...[
+                const SizedBox(height: 6),
+                Text(_errFoto!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 14),
+
+              const Text('Nama Alat',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: TextField(
+                  controller: _namaC,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: "Masukkan nama alat",
+                    hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onChanged: (_) {
+                    if (_showError) setState(() => _errNama = null);
+                  },
+                ),
+              ),
+              if (_showError && _errNama != null) ...[
+                const SizedBox(height: 6),
+                Text(_errNama!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 12),
+
+              const Text('Stok', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: TextField(
+                  controller: _stokC,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: "Masukkan jumlah stok",
+                    hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onChanged: (_) {
+                    if (_showError) setState(() => _errStok = null);
+                  },
+                ),
+              ),
+              if (_showError && _errStok != null) ...[
+                const SizedBox(height: 6),
+                Text(_errStok!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 12),
+
+              const Text('Kategori',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: _selectedKategoriId,
+                    hint: const Text("Pilih kategori",
+                        style: TextStyle(color: Colors.black38, fontSize: 12)),
+                    items: widget.categories.map((e) {
+                      final id = (e['id_kategori'] as int);
+                      final nama = (e['nama_kategori'] as String);
+                      return DropdownMenuItem<int>(value: id, child: Text(nama));
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedKategoriId = val;
+                        if (_showError) _errKategori = null;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              if (_showError && _errKategori != null) ...[
+                const SizedBox(height: 6),
+                Text(_errKategori!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: _loading ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Batal',
+                            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0061CD),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text("Tambah",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
                       ),
                     ),
                   ),
@@ -1495,10 +1101,321 @@ class _KategoriFormDialogState extends State<KategoriFormDialog> {
     );
   }
 
-  // untuk kategori dialog boleh fixed height karena jarang muncul error panjang
-  Widget _boxInputFixedHeight({required Widget child}) {
+  Widget _box({required Widget child}) {
     return Container(
-      height: 46,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200),
+      ),
+      child: child,
+    );
+  }
+}
+
+// =====================
+// DIALOG EDIT ALAT
+// =====================
+class EditAlatDialog extends StatefulWidget {
+  final List<Map<String, dynamic>> categories;
+  final String initialNama;
+  final String initialStok;
+  final int? initialKategoriId;
+  final String? initialFotoUrl;
+  final void Function(Map<String, dynamic> data) onSubmit;
+
+  const EditAlatDialog({
+    super.key,
+    required this.categories,
+    required this.initialNama,
+    required this.initialStok,
+    required this.initialKategoriId,
+    required this.initialFotoUrl,
+    required this.onSubmit,
+  });
+
+  @override
+  State<EditAlatDialog> createState() => _EditAlatDialogState();
+}
+
+class _EditAlatDialogState extends State<EditAlatDialog> {
+  late final TextEditingController _namaC;
+  late final TextEditingController _stokC;
+
+  final ImagePicker _picker = ImagePicker();
+  Uint8List? _fotoBytes;
+  String? _fotoFilename;
+
+  int? _selectedKategoriId;
+  bool _loading = false;
+
+  bool _showError = false;
+  String? _errNama;
+  String? _errStok;
+  String? _errKategori;
+
+  @override
+  void initState() {
+    super.initState();
+    _namaC = TextEditingController(text: widget.initialNama);
+    _stokC = TextEditingController(text: widget.initialStok);
+    _selectedKategoriId = widget.initialKategoriId;
+  }
+
+  @override
+  void dispose() {
+    _namaC.dispose();
+    _stokC.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final pickedFile = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 1080,
+    );
+    if (pickedFile == null) return;
+
+    final bytes = await pickedFile.readAsBytes();
+    setState(() {
+      _fotoBytes = bytes;
+      _fotoFilename = pickedFile.name;
+    });
+  }
+
+  bool _validate() {
+    String? errNama;
+    String? errStok;
+    String? errKategori;
+
+    if (_namaC.text.trim().isEmpty) errNama = "Nama alat wajib diisi";
+
+    final stokRaw = _stokC.text.trim();
+    if (stokRaw.isEmpty) {
+      errStok = "Stok wajib diisi";
+    } else {
+      final stokVal = int.tryParse(stokRaw);
+      if (stokVal == null) errStok = "Stok harus berupa angka";
+      if (stokVal != null && stokVal < 0) errStok = "Stok tidak boleh minus";
+    }
+
+    if (_selectedKategoriId == null) errKategori = "Kategori wajib dipilih";
+
+    setState(() {
+      _errNama = errNama;
+      _errStok = errStok;
+      _errKategori = errKategori;
+    });
+
+    return errNama == null && errStok == null && errKategori == null;
+  }
+
+  Future<void> _submit() async {
+    setState(() => _showError = true);
+    final ok = _validate();
+    if (!ok) return;
+
+    setState(() => _loading = true);
+    try {
+      widget.onSubmit({
+        'nama': _namaC.text.trim(),
+        'stok': int.parse(_stokC.text.trim()),
+        'kategoriId': _selectedKategoriId!,
+        'fotoBytes': _fotoBytes, // nullable
+        'fotoFilename': _fotoFilename ?? 'foto.jpg',
+      });
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: const [
+            BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, 8))
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Edit Alat",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+
+              const Text('Foto', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              InkWell(
+                onTap: _pickImage,
+                child: Container(
+                  height: 140,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.grey.shade200),
+                  ),
+                  child: _fotoBytes != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(12),
+                          child: Image.memory(_fotoBytes!, fit: BoxFit.cover),
+                        )
+                      : (widget.initialFotoUrl != null && widget.initialFotoUrl!.isNotEmpty)
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                widget.initialFotoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Center(
+                                  child: Icon(Icons.broken_image, color: Color(0xFF0061CD)),
+                                ),
+                              ),
+                            )
+                          : const Center(
+                              child: Icon(Icons.add_photo_alternate, color: Color(0xFF0061CD)),
+                            ),
+                ),
+              ),
+
+              const SizedBox(height: 14),
+
+              const Text('Nama Alat',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: TextField(
+                  controller: _namaC,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: "Masukkan nama alat",
+                    hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onChanged: (_) {
+                    if (_showError) setState(() => _errNama = null);
+                  },
+                ),
+              ),
+              if (_showError && _errNama != null) ...[
+                const SizedBox(height: 6),
+                Text(_errNama!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 12),
+
+              const Text('Stok', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: TextField(
+                  controller: _stokC,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    hintText: "Masukkan jumlah stok",
+                    hintStyle: TextStyle(color: Colors.black38, fontSize: 12),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  ),
+                  onChanged: (_) {
+                    if (_showError) setState(() => _errStok = null);
+                  },
+                ),
+              ),
+              if (_showError && _errStok != null) ...[
+                const SizedBox(height: 6),
+                Text(_errStok!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 12),
+
+              const Text('Kategori',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
+              const SizedBox(height: 6),
+              _box(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    isExpanded: true,
+                    value: _selectedKategoriId,
+                    hint: const Text("Pilih kategori",
+                        style: TextStyle(color: Colors.black38, fontSize: 12)),
+                    items: widget.categories.map((e) {
+                      final id = (e['id_kategori'] as int);
+                      final nama = (e['nama_kategori'] as String);
+                      return DropdownMenuItem<int>(value: id, child: Text(nama));
+                    }).toList(),
+                    onChanged: (val) {
+                      setState(() {
+                        _selectedKategoriId = val;
+                        if (_showError) _errKategori = null;
+                      });
+                    },
+                  ),
+                ),
+              ),
+              if (_showError && _errKategori != null) ...[
+                const SizedBox(height: 6),
+                Text(_errKategori!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+              ],
+
+              const SizedBox(height: 16),
+
+              Row(
+                children: [
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: OutlinedButton(
+                        onPressed: _loading ? null : () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.grey.shade300,
+                          side: BorderSide.none,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: const Text('Batal',
+                            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: SizedBox(
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: _loading ? null : _submit,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF0061CD),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        child: _loading
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text("Simpan",
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ],
+              )
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _box({required Widget child}) {
+    return Container(
       decoration: BoxDecoration(
         color: Colors.grey.shade100,
         borderRadius: BorderRadius.circular(12),

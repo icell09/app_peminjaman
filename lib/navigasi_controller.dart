@@ -92,27 +92,27 @@ class _NavigationControllerState extends State<NavigationController> {
     if (_currentRole == Role.admin) {
       screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(), const ProfilAdmin()];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.work), label: 'Alat'),
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pengguna'),
-        BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Aktivitas'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(Icons.business_center_outlined), label: 'Alat'),
+        BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Pengguna'),
+        BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Aktivitas'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
       ];
     } else if (_currentRole == Role.petugas) {
       screens = [const BerandaPetugas(), const PersetujuanPetugas(), const LaporanPetugas(), const PengembalianPetugas(), const ProfilPetugas()];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Persetujuan'),
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Laporan'),
-        BottomNavigationBarItem(icon: Icon(Icons.assignment_return), label: 'Pengembalian'),  
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),  
+        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(Icons.inventory_outlined), label: 'Persetujuan'),
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
+        BottomNavigationBarItem(icon: Icon(Icons.assignment_return_outlined), label: 'Pengembalian'),  
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),  
       ];
     } else {
       screens = [const BerandaPeminjam(), const PinjamanPeminjam(), const ProfilPeminjam()];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.history), label: 'Pinjaman'),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(Icons.history_outlined), label: 'Pinjaman'),
+        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
       ];
     }
 
