@@ -90,7 +90,7 @@ class _NavigationControllerState extends State<NavigationController> {
 
     // Gunakan _currentRole yang sudah diupdate dari Database
     if (_currentRole == Role.admin) {
-      screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(), const ProfilAdmin()];
+      screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(),  ProfilAdmin()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.business_center_outlined), label: 'Alat'),
