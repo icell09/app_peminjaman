@@ -99,12 +99,12 @@ class _NavigationControllerState extends State<NavigationController> {
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
       ];
     } else if (_currentRole == Role.petugas) {
-      screens = [const BerandaPetugas(), const PersetujuanPetugas(), const LaporanPetugas(), const PengembalianPetugas(), const ProfilPetugas()];
+      screens = [const BerandaPetugas(), const PersetujuanPetugas(), const PengembalianPetugas(), const LaporanPetugas(), const ProfilPetugas()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.inventory_outlined), label: 'Persetujuan'),
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
         BottomNavigationBarItem(icon: Icon(Icons.assignment_return_outlined), label: 'Pengembalian'),  
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),  
       ];
     } else {
