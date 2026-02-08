@@ -1,19 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class HalamanManajemenPengguna extends StatefulWidget {
-  const HalamanManajemenPengguna({super.key});
+class PenggunaAdmin extends StatefulWidget {
+  const PenggunaAdmin({super.key});
 
   @override
-  State<HalamanManajemenPengguna> createState() => _HalamanManajemenPenggunaState();
+  State<PenggunaAdmin> createState() => _PenggunaAdminState();
 }
 
-class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
+class _PenggunaAdminState extends State<PenggunaAdmin> {
   final SupabaseClient supabase = Supabase.instance.client;
   final TextEditingController _searchCtrl = TextEditingController();
   String _filterRole = "Semua";
+  bool _loading = false;
 
-  // --- 1. READ: Ambil data secara Realtime ---
+  // --- LOGIKA DATA ---
+
   Stream<List<Map<String, dynamic>>> get _streamUsers {
     return supabase
         .from('users')
@@ -21,7 +23,27 @@ class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
         .order('nama', ascending: true);
   }
 
-  // --- 2. CREATE: Tambah User ---
+  Future<void> _updateUser(String id, String nama, String role, String password) async {
+    try {
+      // 1. Update Tabel Public
+      await supabase.from('users').update({
+        'nama': nama,
+        'role': role,
+      }).match({'id_user': id});
+
+      // 2. Update Password di Auth (Jika kolom diisi)
+      if (password.isNotEmpty) {
+        await supabase.auth.admin.updateUserById(
+          id,
+          attributes: AdminUpdateUserAttributes(password: password),
+        );
+      }
+      _showSnackBar("Data $nama berhasil diperbarui", Colors.blue);
+    } catch (e) {
+      _showSnackBar("Gagal memperbarui (Cek Hak Akses Admin)", Colors.red);
+    }
+  }
+
   Future<void> _tambahUser(String email, String password, String nama, String role) async {
     try {
       await supabase.auth.signUp(
@@ -29,130 +51,118 @@ class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
         password: password,
         data: {'nama': nama, 'role': role},
       );
-      if (mounted) _showSnackBar("User berhasil ditambahkan", Colors.green);
+      _showSnackBar("User berhasil ditambahkan", Colors.green);
     } catch (e) {
-      if (mounted) _showSnackBar("Gagal menambah: $e", Colors.red);
+      _showSnackBar("Gagal menambah: $e", Colors.red);
     }
   }
 
-  // --- 3. UPDATE: Ubah data di tabel public.users ---
-  Future<void> _updateUser(String id, String nama, String role) async {
+  Future<void> _hapusUser(String id) async {
     try {
-      await supabase.from('users').update({
-        'nama': nama,
-        'role': role,
-      }).match({'id_user': id});
-      
-      if (mounted) _showSnackBar("Data $nama berhasil diperbarui", Colors.blue);
-    } catch (e) {
-      if (mounted) _showSnackBar("Gagal update: $e", Colors.red);
-    }
-  }
-
-  // --- 4. DELETE: Hapus data (Memicu Trigger di Database) ---
-  Future<void> _hapusUser(String id, String nama) async {
-    try {
-      // Menghapus di public.users akan otomatis menghapus di Auth (jika Trigger SQL sudah dipasang)
       await supabase.from('users').delete().match({'id_user': id});
-      if (mounted) _showSnackBar("User $nama berhasil dihapus", Colors.orange);
+      _showSnackBar("Pengguna dihapus", Colors.orange);
     } catch (e) {
-      if (mounted) _showSnackBar("Gagal menghapus: $e", Colors.red);
+      _showSnackBar("Gagal menghapus", Colors.red);
     }
   }
 
   void _showSnackBar(String msg, Color color) {
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating),
     );
   }
 
+  // --- UI UTAMA ---
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F7FA),
+      backgroundColor: Colors.white,
       floatingActionButton: FloatingActionButton(
-        backgroundColor: const Color(0xFF0061D7),
-        onPressed: () => _dialogForm(), 
+        backgroundColor: const Color(0xFF0061CD),
+        onPressed: () => _dialogForm(),
         child: const Icon(Icons.add, color: Colors.white),
       ),
-      body: Stack(
-        children: [
-          _buildBlueHeader(),
-          SafeArea(
-            child: Column(
-              children: [
-                _buildHeaderTitle(),
-                _buildSearchAndFilterRow(),
-                Expanded(child: _buildUserList()),
-              ],
-            ),
-          ),
-        ],
+      body: SafeArea(
+        child: _loading
+            ? const Center(child: CircularProgressIndicator())
+            : Column(
+                children: [
+                  // HEADER BARU SESUAI REQUEST
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0061CD),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: const [
+                          Text('Pengguna',
+                              style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold)),
+                          SizedBox(height: 4),
+                          Text('Kelola dan pantau data pengguna laboratorium',
+                              style: TextStyle(color: Colors.white70, fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ),
+
+                  // FILTER & SEARCH
+                  _buildSearchRow(),
+
+                  // LIST DATA
+                  Expanded(child: _buildUserList()),
+                ],
+              ),
       ),
     );
   }
 
-  // --- UI COMPONENTS ---
-
-  Widget _buildBlueHeader() {
-    return Container(
-      height: 160,
-      decoration: const BoxDecoration(
-        color: Color(0xFF0061D7),
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(30)),
-      ),
-    );
-  }
-
-  Widget _buildHeaderTitle() {
-    return const Padding(
-      padding: EdgeInsets.all(20),
-      child: Align(
-        alignment: Alignment.centerLeft,
-        child: Text(
-          "Manajemen Pengguna", 
-          style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSearchAndFilterRow() {
+  Widget _buildSearchRow() {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
         children: [
           Expanded(
-            flex: 2,
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF3F7FF),
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: TextField(
                 controller: _searchCtrl,
-                onChanged: (_) => setState(() {}),
+                onChanged: (v) => setState(() {}),
                 decoration: const InputDecoration(
-                  hintText: "Cari nama...", 
-                  border: InputBorder.none, 
-                  icon: Icon(Icons.search),
-                ),
+                    hintText: "Cari nama...",
+                    border: InputBorder.none,
+                    icon: Icon(Icons.search, color: Colors.grey)),
               ),
             ),
           ),
-          const SizedBox(width: 10),
-          Expanded(
-            flex: 1,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<String>(
-                  value: _filterRole,
-                  isExpanded: true,
-                  items: ["Semua", "Admin", "Petugas", "Peminjam"]
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
-                      .toList(),
-                  onChanged: (v) => setState(() => _filterRole = v!),
-                ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF3F7FF),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: _filterRole,
+                items: ["Semua", "Admin", "Petugas", "Peminjam"]
+                    .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
+                    .toList(),
+                onChanged: (v) => setState(() => _filterRole = v!),
               ),
             ),
           ),
@@ -165,17 +175,15 @@ class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
     return StreamBuilder<List<Map<String, dynamic>>>(
       stream: _streamUsers,
       builder: (context, snapshot) {
-        if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-
         final list = snapshot.data!.where((u) {
           final matchesName = u['nama'].toString().toLowerCase().contains(_searchCtrl.text.toLowerCase());
-          final matchesRole = _filterRole == "Semua" || u['role'] == _filterRole;
+          final matchesRole = _filterRole == "Semua" || u['role'].toString().toLowerCase() == _filterRole.toLowerCase();
           return matchesName && matchesRole;
         }).toList();
 
         return ListView.builder(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.symmetric(horizontal: 16),
           itemCount: list.length,
           itemBuilder: (context, i) => _cardUser(list[i]),
         );
@@ -184,108 +192,77 @@ class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
   }
 
   Widget _cardUser(Map<String, dynamic> user) {
-    return Container(
+    return Card(
+      elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(15),
-      decoration: BoxDecoration(
-        color: Colors.white, 
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
-      ),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              const CircleAvatar(
-                backgroundColor: Color(0xFFEAF2FF), 
-                child: Icon(Icons.person, color: Color(0xFF0061D7)),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start, 
-                  children: [
-                    Text(user['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text(user['email'] ?? '-', style: const TextStyle(color: Colors.grey, fontSize: 12)),
-                  ],
-                ),
-              ),
-              Text(
-                user['role'], 
-                style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue, fontSize: 11),
-              ),
-            ],
-          ),
-          const Divider(height: 25),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton.icon(
-                onPressed: () => _dialogForm(user: user), 
-                icon: const Icon(Icons.edit, size: 18), 
-                label: const Text("Edit"),
-              ),
-              const SizedBox(width: 10),
-              TextButton.icon(
-                onPressed: () => _confirmDelete(user['id_user'], user['nama']), 
-                icon: const Icon(Icons.delete, size: 18, color: Colors.red), 
-                label: const Text("Hapus", style: TextStyle(color: Colors.red)),
-              ),
-            ],
-          )
-        ],
+      shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(15),
+          side: BorderSide(color: Colors.grey.shade100)),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(12),
+        leading: CircleAvatar(
+          backgroundColor: const Color(0xFFE8F0FE),
+          child: Icon(Icons.person, color: const Color(0xFF0061CD)),
+        ),
+        title: Text(user['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(user['email'] ?? '-', style: const TextStyle(fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(user['role'].toString().toUpperCase(), 
+                 style: const TextStyle(color: Color(0xFF0061CD), fontWeight: FontWeight.bold, fontSize: 10)),
+          ],
+        ),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.blue), onPressed: () => _dialogForm(user: user)),
+            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _confirmDelete(user['id_user'])),
+          ],
+        ),
       ),
     );
   }
 
-  void _confirmDelete(String id, String nama) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Hapus Pengguna?"),
-        content: Text("Yakin ingin menghapus $nama? Akun login juga akan terhapus."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-          ElevatedButton(
-            onPressed: () {
-              _hapusUser(id, nama);
-              Navigator.pop(context);
-            }, 
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Hapus", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
+  // --- DIALOG FORM (CREATE & EDIT) ---
 
   void _dialogForm({Map<String, dynamic>? user}) {
     final nameC = TextEditingController(text: user?['nama']);
     final emailC = TextEditingController(text: user?['email']);
     final passC = TextEditingController();
-    String roleC = user?['role'] ?? 'Peminjam';
+    
+    List<String> roles = ["Admin", "Petugas", "Peminjam"];
+    String currentRole = roles.firstWhere(
+      (e) => e.toLowerCase() == (user?['role']?.toString().toLowerCase() ?? "petugas"),
+      orElse: () => "Petugas"
+    );
 
     showDialog(
       context: context,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           title: Text(user == null ? "Tambah Pengguna" : "Edit Pengguna"),
           content: SingleChildScrollView(
             child: Column(
-              mainAxisSize: MainAxisSize.min, 
+              mainAxisSize: MainAxisSize.min,
               children: [
-                TextField(controller: nameC, decoration: const InputDecoration(labelText: "Nama")),
-                if (user == null) ...[
-                  TextField(controller: emailC, decoration: const InputDecoration(labelText: "Email")),
-                  TextField(controller: passC, decoration: const InputDecoration(labelText: "Password"), obscureText: true),
-                ],
-                DropdownButtonFormField<String>(
-                  value: roleC,
-                  items: ["Admin", "Petugas", "Peminjam"]
-                      .map((e) => DropdownMenuItem(value: e, child: Text(e)))
-                      .toList(),
-                  onChanged: (v) => setDialogState(() => roleC = v!),
-                  decoration: const InputDecoration(labelText: "Role"),
+                _textField(nameC, "Nama Lengkap"),
+                _textField(emailC, "Email", enabled: user == null),
+                _textField(passC, "Kata Sandi", obscure: true, hint: user != null ? "Kosongkan jika tak diubah" : null),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(color: const Color(0xFFF3F7FF), borderRadius: BorderRadius.circular(10)),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: currentRole,
+                      items: roles.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                      onChanged: (v) => setDialogState(() => currentRole = v!),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -293,19 +270,55 @@ class _HalamanManajemenPenggunaState extends State<HalamanManajemenPengguna> {
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0061CD)),
               onPressed: () {
                 if (user == null) {
-                  _tambahUser(emailC.text, passC.text, nameC.text, roleC);
+                  _tambahUser(emailC.text, passC.text, nameC.text, currentRole);
                 } else {
-                  _updateUser(user['id_user'], nameC.text, roleC);
+                  _updateUser(user['id_user'], nameC.text, currentRole, passC.text);
                 }
                 Navigator.pop(context);
               },
-              child: const Text("Simpan"),
+              child: const Text("Simpan", style: TextStyle(color: Colors.white)),
             )
           ],
         ),
       ),
     );
   }
+
+  Widget _textField(TextEditingController ctrl, String label, {bool obscure = false, bool enabled = true, String? hint}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextField(
+        controller: ctrl,
+        obscureText: obscure,
+        enabled: enabled,
+        decoration: InputDecoration(
+          labelText: label,
+          hintText: hint,
+          filled: true,
+          fillColor: const Color(0xFFF3F7FF),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        ),
+      ),
+    );
+  }
+
+  void _confirmDelete(String id) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Hapus?"),
+        content: const Text("Data tidak bisa dikembalikan."),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+          TextButton(onPressed: () { _hapusUser(id); Navigator.pop(context); }, child: const Text("Hapus", style: TextStyle(color: Colors.red))),
+        ],
+      ),
+    );
+  }
+}
+
+AdminUpdateUserAttributes({required String password}) {
 }
