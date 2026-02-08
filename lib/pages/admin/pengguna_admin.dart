@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:ukk_peminjaman/services/pengguna_services.dart';
+import '../../services/pengguna_services.dart';
 
 class PenggunaAdmin extends StatefulWidget {
   const PenggunaAdmin({super.key});
@@ -9,68 +10,81 @@ class PenggunaAdmin extends StatefulWidget {
 }
 
 class _PenggunaAdminState extends State<PenggunaAdmin> {
-  final SupabaseClient supabase = Supabase.instance.client;
+  final PenggunaAdminController controller = PenggunaAdminController();
+
   final TextEditingController _searchCtrl = TextEditingController();
   String _filterRole = "Semua";
   bool _loading = false;
 
-  // --- LOGIKA DATA ---
+  Stream<List<Map<String, dynamic>>> get _streamUsers => controller.streamUsers();
 
-  Stream<List<Map<String, dynamic>>> get _streamUsers {
-    return supabase
-        .from('users')
-        .stream(primaryKey: ['id_user'])
-        .order('nama', ascending: true);
-  }
-
-  Future<void> _updateUser(String id, String nama, String role, String password) async {
-    try {
-      // 1. Update Tabel Public
-      await supabase.from('users').update({
-        'nama': nama,
-        'role': role,
-      }).match({'id_user': id});
-
-      // 2. Update Password di Auth (Jika kolom diisi)
-      if (password.isNotEmpty) {
-        await supabase.auth.admin.updateUserById(
-          id,
-          attributes: AdminUpdateUserAttributes(password: password),
-        );
-      }
-      _showSnackBar("Data $nama berhasil diperbarui", Colors.blue);
-    } catch (e) {
-      _showSnackBar("Gagal memperbarui (Cek Hak Akses Admin)", Colors.red);
-    }
-  }
-
-  Future<void> _tambahUser(String email, String password, String nama, String role) async {
-    try {
-      await supabase.auth.signUp(
-        email: email,
-        password: password,
-        data: {'nama': nama, 'role': role},
-      );
-      _showSnackBar("User berhasil ditambahkan", Colors.green);
-    } catch (e) {
-      _showSnackBar("Gagal menambah: $e", Colors.red);
-    }
-  }
-
-  Future<void> _hapusUser(String id) async {
-    try {
-      await supabase.from('users').delete().match({'id_user': id});
-      _showSnackBar("Pengguna dihapus", Colors.orange);
-    } catch (e) {
-      _showSnackBar("Gagal menghapus", Colors.red);
-    }
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   void _showSnackBar(String msg, Color color) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg), backgroundColor: color, behavior: SnackBarBehavior.floating),
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+      ),
     );
+  }
+
+  Future<void> _updateUser(String id, String nama, String role, String password) async {
+    try {
+      setState(() => _loading = true);
+
+      await controller.updateUser(
+        id: id,
+        nama: nama,
+        role: role,
+        password: password.isEmpty ? null : password,
+      );
+
+      _showSnackBar("Data $nama berhasil diperbarui", Colors.blue);
+    } catch (e) {
+      _showSnackBar("Gagal memperbarui (Cek Hak Akses Admin)", Colors.red);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _tambahUser(String email, String password, String nama, String role) async {
+    try {
+      setState(() => _loading = true);
+
+      await controller.tambahUser(
+        email: email,
+        password: password,
+        nama: nama,
+        role: role,
+      );
+
+      _showSnackBar("User berhasil ditambahkan", Colors.green);
+    } catch (e) {
+      _showSnackBar("Gagal menambah: $e", Colors.red);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _hapusUser(String id) async {
+    try {
+      setState(() => _loading = true);
+
+      await controller.hapusUser(id);
+
+      _showSnackBar("Pengguna dihapus", Colors.orange);
+    } catch (e) {
+      _showSnackBar("Gagal menghapus", Colors.red);
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   // --- UI UTAMA ---
@@ -89,7 +103,6 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  // HEADER BARU SESUAI REQUEST
                   Padding(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                     child: Container(
@@ -103,23 +116,26 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: const [
-                          Text('Pengguna',
-                              style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.bold)),
+                          Text(
+                            'Pengguna',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 26,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           SizedBox(height: 4),
-                          Text('Kelola dan pantau data pengguna laboratorium',
-                              style: TextStyle(color: Colors.white70, fontSize: 12)),
+                          Text(
+                            'Kelola dan pantau data pengguna laboratorium',
+                            style: TextStyle(color: Colors.white70, fontSize: 12),
+                          ),
                         ],
                       ),
                     ),
                   ),
 
-                  // FILTER & SEARCH
                   _buildSearchRow(),
 
-                  // LIST DATA
                   Expanded(child: _buildUserList()),
                 ],
               ),
@@ -143,9 +159,10 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
                 controller: _searchCtrl,
                 onChanged: (v) => setState(() {}),
                 decoration: const InputDecoration(
-                    hintText: "Cari nama...",
-                    border: InputBorder.none,
-                    icon: Icon(Icons.search, color: Colors.grey)),
+                  hintText: "Cari nama...",
+                  border: InputBorder.none,
+                  icon: Icon(Icons.search, color: Colors.grey),
+                ),
               ),
             ),
           ),
@@ -160,7 +177,10 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
               child: DropdownButton<String>(
                 value: _filterRole,
                 items: ["Semua", "Admin", "Petugas", "Peminjam"]
-                    .map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 13))))
+                    .map((e) => DropdownMenuItem(
+                          value: e,
+                          child: Text(e, style: const TextStyle(fontSize: 13)),
+                        ))
                     .toList(),
                 onChanged: (v) => setState(() => _filterRole = v!),
               ),
@@ -176,9 +196,16 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
       stream: _streamUsers,
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
         final list = snapshot.data!.where((u) {
-          final matchesName = u['nama'].toString().toLowerCase().contains(_searchCtrl.text.toLowerCase());
-          final matchesRole = _filterRole == "Semua" || u['role'].toString().toLowerCase() == _filterRole.toLowerCase();
+          final matchesName = u['nama']
+              .toString()
+              .toLowerCase()
+              .contains(_searchCtrl.text.toLowerCase());
+
+          final matchesRole = _filterRole == "Semua" ||
+              u['role'].toString().toLowerCase() == _filterRole.toLowerCase();
+
           return matchesName && matchesRole;
         }).toList();
 
@@ -196,13 +223,14 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
       elevation: 0,
       margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(15),
-          side: BorderSide(color: Colors.grey.shade100)),
+        borderRadius: BorderRadius.circular(15),
+        side: BorderSide(color: Colors.grey.shade100),
+      ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(12),
-        leading: CircleAvatar(
-          backgroundColor: const Color(0xFFE8F0FE),
-          child: Icon(Icons.person, color: const Color(0xFF0061CD)),
+        leading: const CircleAvatar(
+          backgroundColor: Color(0xFFE8F0FE),
+          child: Icon(Icons.person, color: Color(0xFF0061CD)),
         ),
         title: Text(user['nama'] ?? '-', style: const TextStyle(fontWeight: FontWeight.bold)),
         subtitle: Column(
@@ -210,15 +238,27 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
           children: [
             Text(user['email'] ?? '-', style: const TextStyle(fontSize: 12)),
             const SizedBox(height: 4),
-            Text(user['role'].toString().toUpperCase(), 
-                 style: const TextStyle(color: Color(0xFF0061CD), fontWeight: FontWeight.bold, fontSize: 10)),
+            Text(
+              user['role'].toString().toUpperCase(),
+              style: const TextStyle(
+                color: Color(0xFF0061CD),
+                fontWeight: FontWeight.bold,
+                fontSize: 10,
+              ),
+            ),
           ],
         ),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            IconButton(icon: const Icon(Icons.edit_outlined, color: Colors.blue), onPressed: () => _dialogForm(user: user)),
-            IconButton(icon: const Icon(Icons.delete_outline, color: Colors.red), onPressed: () => _confirmDelete(user['id_user'])),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+              onPressed: () => _dialogForm(user: user),
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, color: Colors.red),
+              onPressed: () => _confirmDelete(user['id_user']),
+            ),
           ],
         ),
       ),
@@ -231,11 +271,11 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
     final nameC = TextEditingController(text: user?['nama']);
     final emailC = TextEditingController(text: user?['email']);
     final passC = TextEditingController();
-    
-    List<String> roles = ["Admin", "Petugas", "Peminjam"];
+
+    final roles = ["Admin", "Petugas", "Peminjam"];
     String currentRole = roles.firstWhere(
       (e) => e.toLowerCase() == (user?['role']?.toString().toLowerCase() ?? "petugas"),
-      orElse: () => "Petugas"
+      orElse: () => "Petugas",
     );
 
     showDialog(
@@ -250,16 +290,26 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
               children: [
                 _textField(nameC, "Nama Lengkap"),
                 _textField(emailC, "Email", enabled: user == null),
-                _textField(passC, "Kata Sandi", obscure: true, hint: user != null ? "Kosongkan jika tak diubah" : null),
+                _textField(
+                  passC,
+                  "Kata Sandi",
+                  obscure: true,
+                  hint: user != null ? "Kosongkan jika tak diubah" : null,
+                ),
                 const SizedBox(height: 10),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(color: const Color(0xFFF3F7FF), borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF3F7FF),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<String>(
                       isExpanded: true,
                       value: currentRole,
-                      items: roles.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+                      items: roles
+                          .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+                          .toList(),
                       onChanged: (v) => setDialogState(() => currentRole = v!),
                     ),
                   ),
@@ -268,7 +318,10 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Batal"),
+            ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0061CD)),
               onPressed: () {
@@ -280,14 +333,20 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
                 Navigator.pop(context);
               },
               child: const Text("Simpan", style: TextStyle(color: Colors.white)),
-            )
+            ),
           ],
         ),
       ),
     );
   }
 
-  Widget _textField(TextEditingController ctrl, String label, {bool obscure = false, bool enabled = true, String? hint}) {
+  Widget _textField(
+    TextEditingController ctrl,
+    String label, {
+    bool obscure = false,
+    bool enabled = true,
+    String? hint,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: TextField(
@@ -299,7 +358,10 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
           hintText: hint,
           filled: true,
           fillColor: const Color(0xFFF3F7FF),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
+          ),
         ),
       ),
     );
@@ -313,12 +375,15 @@ class _PenggunaAdminState extends State<PenggunaAdmin> {
         content: const Text("Data tidak bisa dikembalikan."),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Batal")),
-          TextButton(onPressed: () { _hapusUser(id); Navigator.pop(context); }, child: const Text("Hapus", style: TextStyle(color: Colors.red))),
+          TextButton(
+            onPressed: () {
+              _hapusUser(id);
+              Navigator.pop(context);
+            },
+            child: const Text("Hapus", style: TextStyle(color: Colors.red)),
+          ),
         ],
       ),
     );
   }
-}
-
-AdminUpdateUserAttributes({required String password}) {
 }

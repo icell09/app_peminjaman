@@ -380,11 +380,13 @@ class _AlatAdminState extends State<AlatAdmin> {
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Row(
                       children: [
+                        // Search Bar
                         Expanded(
                           child: TextField(
                             onChanged: (value) => setState(() => _searchQuery = value),
                             decoration: InputDecoration(
-                              hintText: _isAlatTab ? 'Cari alat ...' : 'Cari (hanya memfilter alat) ...',
+                              // Pesan hint berubah sesuai tab
+                              hintText: _isAlatTab ? 'Cari alat ...' : 'Cari kategori ...', 
                               prefixIcon: const Icon(Icons.search, size: 20),
                               filled: true,
                               fillColor: Colors.grey.shade50,
@@ -400,8 +402,12 @@ class _AlatAdminState extends State<AlatAdmin> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 10),
-                        _buildFilterKategoriPopup(),
+                        
+                        // LOGIKA FILTER: Hanya muncul jika _isAlatTab bernilai true
+                        if (_isAlatTab) ...[
+                          const SizedBox(width: 10),
+                          _buildFilterKategoriPopup(),
+                        ],
                       ],
                     ),
                   ),
