@@ -5,9 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AlatSupabaseService {
   final SupabaseClient _db = Supabase.instance.client;
 
-  // =====================
-  // ALAT
-  // =====================
+  // alat
   Future<List<Map<String, dynamic>>> fetchAlat() async {
     final res = await _db
         .from('alat')
@@ -75,9 +73,7 @@ class AlatSupabaseService {
     await _db.from('alat').delete().eq('id_alat', idAlat);
   }
 
-  // =====================
-  // PINJAM ALAT (LENGKAP)
-  // =====================
+  // pinjam alat
   Future<void> pinjamAlat({
     required int idAlat,
     required int stokSekarang,
@@ -89,14 +85,14 @@ class AlatSupabaseService {
       throw Exception('Stok habis');
     }
 
-    // 1. simpan ke tabel peminjaman
+    // simpan ke tabel peminjaman
     await _db.from('peminjaman').insert({
       'id_alat': idAlat,
       'id_user': user.id,
       'status': 'dipinjam',
     });
 
-    // 2. update stok alat
+    // update stok alat
     final stokBaru = stokSekarang - 1;
     final statusAlat = stokBaru == 0 ? 'dipinjam' : 'tersedia';
 
@@ -106,9 +102,7 @@ class AlatSupabaseService {
         .eq('id_alat', idAlat);
   }
 
-  // =====================
-  // PENGEMBALIAN
-  // =====================
+  // pengembaliana alat
   Future<void> kembalikanAlat({
     required int idPeminjaman,
     required int idAlat,
@@ -131,9 +125,8 @@ class AlatSupabaseService {
         .eq('id_alat', idAlat);
   }
 
-  // =====================
-  // PINJAMAN SAYA
-  // =====================
+
+  // riwayat peminjaman saya
   Future<List<Map<String, dynamic>>> fetchPinjamanSaya() async {
     final user = _db.auth.currentUser;
     if (user == null) return [];
@@ -157,9 +150,7 @@ class AlatSupabaseService {
     return (res as List).cast<Map<String, dynamic>>();
   }
 
-  // =====================
-  // KATEGORI
-  // =====================
+  // kategori
   Future<List<Map<String, dynamic>>> fetchKategori() async {
     final res = await _db
         .from('kategori')
@@ -187,9 +178,7 @@ class AlatSupabaseService {
     await _db.from('kategori').delete().eq('id_kategori', idKategori);
   }
 
-  // =====================
-  // FOTO
-  // =====================
+  // foto
   Future<String> uploadFoto({
     required Uint8List bytes,
     required String filename,
@@ -211,9 +200,7 @@ class AlatSupabaseService {
     return _db.storage.from('alat-images').getPublicUrl(path);
   }
 
-  // =====================
   // Helper: map Postgrest error -> pesan singkat
-  // =====================
   String prettyDbError(Object e) {
     if (e is PostgrestException) {
       if (e.code == '23505') return 'Data sudah ada (duplikat).';
@@ -223,9 +210,7 @@ class AlatSupabaseService {
   }
 }
 
-// =====================
-// KERANJANG PEMINJAMAN
-// =====================
+// keranjang peminjaman
 class KeranjangPeminjaman {
   final Map<int, int> _data = {};
 

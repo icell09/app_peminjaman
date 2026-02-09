@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../services/petugas_services.dart';
+import '../../services/petugas_service.dart';
 import 'pengembalian_petugas.dart';
 
 class FormPengembalian extends StatefulWidget {

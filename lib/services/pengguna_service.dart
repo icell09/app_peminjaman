@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class PenggunaAdminController {
+class PenggunaController {
   final SupabaseClient supabase;
 
-  PenggunaAdminController({SupabaseClient? client})
+  PenggunaController({SupabaseClient? client})
       : supabase = client ?? Supabase.instance.client;
 
   Stream<List<Map<String, dynamic>>> streamUsers() {

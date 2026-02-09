@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:ukk_peminjaman/services/pengguna_services.dart';
-import '../../services/pengguna_services.dart';
+import '../../services/pengguna_service.dart';
 
 class PenggunaAdmin extends StatefulWidget {
   const PenggunaAdmin({super.key});
@@ -10,7 +9,7 @@ class PenggunaAdmin extends StatefulWidget {
 }
 
 class _PenggunaAdminState extends State<PenggunaAdmin> {
-  final PenggunaAdminController controller = PenggunaAdminController();
+  final PenggunaController controller = PenggunaController();
 
   final TextEditingController _searchCtrl = TextEditingController();
   String _filterRole = "Semua";

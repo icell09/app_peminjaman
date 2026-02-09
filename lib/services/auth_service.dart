@@ -5,7 +5,7 @@ class AuthService {
 
   Future<String?> login(String email, String password) async {
     try {
-      // 1. Cek dulu apakah email ada di tabel 'users'
+      // Cek dulu apakah email ada di tabel 'users'
       final checkUser = await _supabase
           .from('users')
           .select('email')
@@ -18,7 +18,7 @@ class AuthService {
         return "email_not_found"; // Tandai jika email tidak ada
       }
 
-      // 2. Jika email ada, coba login (verifikasi password)
+      // Jika email ada, coba login (verifikasi password)
       await _supabase.auth.signInWithPassword(
         email: email,
         password: password,
