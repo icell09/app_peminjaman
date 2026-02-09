@@ -32,6 +32,7 @@ class _AktivitasAdminState extends State<AktivitasAdmin> {
     }
 
     return Scaffold(
+<<<<<<< HEAD
       backgroundColor: Colors.white,
       body: Column(
         children: [
@@ -134,10 +135,20 @@ class _AktivitasAdminState extends State<AktivitasAdmin> {
                 ),
           ),
         ],
+=======
+      appBar: AppBar(
+        title: const Text('Log Aktivitas'),
+        backgroundColor: const Color(0xFF0056C1),
+        foregroundColor: Colors.white,
+      ),
+      body: const Center(
+        child: Text('Riwayat peminjaman dan pengembalian muncul di sini'),
+>>>>>>> 8a311b07cca40b07a2bd8166f3ac8ad1395e49c6
       ),
     );
   }
 }
+<<<<<<< HEAD
 
 class ActivityCard extends StatelessWidget {
   final String name;
@@ -227,3 +238,5 @@ class ActivityCard extends StatelessWidget {
     );
   }
 }
+=======
+>>>>>>> 8a311b07cca40b07a2bd8166f3ac8ad1395e49c6

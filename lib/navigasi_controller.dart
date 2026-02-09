@@ -31,7 +31,7 @@ class NavigationController extends StatefulWidget {
 
 class _NavigationControllerState extends State<NavigationController> {
   // Ubah menjadi variabel dinamis, default peminjam
-  Role _currentRole = Role.peminjam; 
+  Role _currentRole = Role.peminjam;
   int _selectedIndex = 0;
   bool _isLoading = true; // Tambahkan loading state
 
@@ -42,47 +42,47 @@ class _NavigationControllerState extends State<NavigationController> {
   }
 
   Future<void> _fetchUserRole() async {
-  try {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final data = await Supabase.instance.client
-          .from('users')
-          .select('role')
-          .eq('id_user', user.id)
-          .maybeSingle(); // Menggunakan maybeSingle agar tidak error jika data kosong
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        final data =
+            await Supabase.instance.client
+                .from('users')
+                .select('role')
+                .eq('id_user', user.id)
+                .maybeSingle(); // Menggunakan maybeSingle agar tidak error jika data kosong
 
-      if (data != null && data['role'] != null) {
-        String roleFromDb = data['role'].toString().toLowerCase(); // Paksa ke huruf kecil
+        if (data != null && data['role'] != null) {
+          String roleFromDb =
+              data['role'].toString().toLowerCase(); // Paksa ke huruf kecil
 
-        setState(() {
-          if (roleFromDb == 'admin') {
-            _currentRole = Role.admin;
-          } else if (roleFromDb == 'petugas') {
-            _currentRole = Role.petugas;
-          } else {
-            _currentRole = Role.peminjam;
-          }
-          _isLoading = false;
-        });
-      } else {
-        // Jika data di tabel users tidak ditemukan sama sekali
-        print("Data user tidak ditemukan di tabel public.users");
-        setState(() => _isLoading = false);
+          setState(() {
+            if (roleFromDb == 'admin') {
+              _currentRole = Role.admin;
+            } else if (roleFromDb == 'petugas') {
+              _currentRole = Role.petugas;
+            } else {
+              _currentRole = Role.peminjam;
+            }
+            _isLoading = false;
+          });
+        } else {
+          // Jika data di tabel users tidak ditemukan sama sekali
+          print("Data user tidak ditemukan di tabel public.users");
+          setState(() => _isLoading = false);
+        }
       }
+    } catch (e) {
+      print("Error detail: $e");
+      setState(() => _isLoading = false);
     }
-  } catch (e) {
-    print("Error detail: $e");
-    setState(() => _isLoading = false);
   }
-}
 
   @override
   Widget build(BuildContext context) {
     // Tampilkan loading saat sedang mengecek role
     if (_isLoading) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     List<Widget> screens = [];
@@ -90,6 +90,7 @@ class _NavigationControllerState extends State<NavigationController> {
 
     // Gunakan _currentRole yang sudah diupdate dari Database
     if (_currentRole == Role.admin) {
+<<<<<<< HEAD
       screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(),  ProfilAdmin()];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
@@ -106,9 +107,52 @@ class _NavigationControllerState extends State<NavigationController> {
         BottomNavigationBarItem(icon: Icon(Icons.assignment_return_outlined), label: 'Pengembalian'),  
         BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
         BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),  
+=======
+      screens = [
+        const BerandaAdmin(),
+        const AlatAdmin(),
+        const PenggunaAdmin(),
+        AktivitasAdmin(),
+        const ProfilAdmin(),
+      ];
+      navItems = const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
+        BottomNavigationBarItem(icon: Icon(Icons.work), label: 'Alat'),
+        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pengguna'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment),
+          label: 'Aktivitas',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+      ];
+    } else if (_currentRole == Role.petugas) {
+      screens = [
+        const BerandaPetugas(),
+        const PersetujuanPetugas(),
+        const LaporanPetugas(),
+        const PengembalianPetugas(),
+        const ProfilPetugas(),
+      ];
+      navItems = const [
+        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.inventory),
+          label: 'Persetujuan',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Laporan'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment_return),
+          label: 'Pengembalian',
+        ),
+        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+>>>>>>> 8a311b07cca40b07a2bd8166f3ac8ad1395e49c6
       ];
     } else {
-      screens = [const BerandaPeminjam(), const PinjamanPeminjam(), const ProfilPeminjam()];
+      screens = [
+        const BerandaPeminjam(),
+        const PinjamanPeminjam(),
+        const ProfilPeminjam(),
+      ];
       navItems = const [
         BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
         BottomNavigationBarItem(icon: Icon(Icons.history_outlined), label: 'Pinjaman'),
