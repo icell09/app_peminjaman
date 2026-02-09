@@ -17,6 +17,25 @@ class AlatSupabaseService {
     return (res as List).cast<Map<String, dynamic>>();
   }
 
+  Future<List<Map<String, dynamic>>> fetchAlatWithKategori() async {
+    final res = await _db
+        .from('alat')
+        .select('''
+      id_alat,
+      nama_alat,
+      stok,
+      status,
+      gambar,
+      kategori:id_kategori (
+        id_kategori,
+        nama_kategori
+      )
+    ''')
+        .order('nama_alat');
+
+    return (res as List).cast<Map<String, dynamic>>();
+  }
+
   Future<void> tambahAlat({
     required String namaAlat,
     required int stok,
@@ -57,6 +76,88 @@ class AlatSupabaseService {
   }
 
   // =====================
+  // PINJAM ALAT (LENGKAP)
+  // =====================
+  Future<void> pinjamAlat({
+    required int idAlat,
+    required int stokSekarang,
+  }) async {
+    final user = _db.auth.currentUser;
+    if (user == null) throw Exception('User belum login');
+
+    if (stokSekarang <= 0) {
+      throw Exception('Stok habis');
+    }
+
+    // 1. simpan ke tabel peminjaman
+    await _db.from('peminjaman').insert({
+      'id_alat': idAlat,
+      'id_user': user.id,
+      'status': 'dipinjam',
+    });
+
+    // 2. update stok alat
+    final stokBaru = stokSekarang - 1;
+    final statusAlat = stokBaru == 0 ? 'dipinjam' : 'tersedia';
+
+    await _db
+        .from('alat')
+        .update({'stok': stokBaru, 'status': statusAlat})
+        .eq('id_alat', idAlat);
+  }
+
+  // =====================
+  // PENGEMBALIAN
+  // =====================
+  Future<void> kembalikanAlat({
+    required int idPeminjaman,
+    required int idAlat,
+    required int stokSekarang,
+  }) async {
+    // update peminjaman
+    await _db
+        .from('peminjaman')
+        .update({
+          'status': 'dikembalikan',
+          'tanggal_kembali': DateTime.now().toIso8601String(),
+        })
+        .eq('id_peminjaman', idPeminjaman);
+
+    // update stok alat
+    final stokBaru = stokSekarang + 1;
+    await _db
+        .from('alat')
+        .update({'stok': stokBaru, 'status': 'tersedia'})
+        .eq('id_alat', idAlat);
+  }
+
+  // =====================
+  // PINJAMAN SAYA
+  // =====================
+  Future<List<Map<String, dynamic>>> fetchPinjamanSaya() async {
+    final user = _db.auth.currentUser;
+    if (user == null) return [];
+
+    final res = await _db
+        .from('peminjaman')
+        .select('''
+      id_peminjaman,
+      status,
+      tanggal_pinjam,
+      alat (
+        id_alat,
+        nama_alat,
+        gambar,
+        stok
+      )
+    ''')
+        .eq('id_user', user.id)
+        .order('tanggal_pinjam', ascending: false);
+
+    return (res as List).cast<Map<String, dynamic>>();
+  }
+
+  // =====================
   // KATEGORI
   // =====================
   Future<List<Map<String, dynamic>>> fetchKategori() async {
@@ -68,8 +169,6 @@ class AlatSupabaseService {
     return (res as List).cast<Map<String, dynamic>>();
   }
 
-  /// IMPORTANT:
-  /// jangan pernah kirim id_kategori saat insert
   Future<void> tambahKategori({required String nama}) async {
     await _db.from('kategori').insert({'nama_kategori': nama});
   }
@@ -98,7 +197,9 @@ class AlatSupabaseService {
     final safeName = filename.isEmpty ? 'foto.jpg' : filename;
     final path = 'alat/${DateTime.now().millisecondsSinceEpoch}_$safeName';
 
-    await _db.storage.from('alat-images').uploadBinary(
+    await _db.storage
+        .from('alat-images')
+        .uploadBinary(
           path,
           bytes,
           fileOptions: const FileOptions(
@@ -120,4 +221,49 @@ class AlatSupabaseService {
     }
     return e.toString();
   }
+}
+
+// =====================
+// KERANJANG PEMINJAMAN
+// =====================
+class KeranjangPeminjaman {
+  final Map<int, int> _data = {};
+
+  void tambah(int idAlat) {
+    _data[idAlat] = (_data[idAlat] ?? 0) + 1;
+  }
+
+  void kurang(int idAlat) {
+    if (!_data.containsKey(idAlat)) return;
+    if (_data[idAlat]! <= 1) {
+      _data.remove(idAlat);
+    } else {
+      _data[idAlat] = _data[idAlat]! - 1;
+    }
+  }
+
+  int get total => _data.values.fold(0, (a, b) => a + b);
+
+  Map<int, int> get items => Map.unmodifiable(_data);
+
+  void clear() => _data.clear();
+}
+
+//fungsi pinjam alat
+Future<void> pinjamAlat({
+  required int idAlat,
+  required int stokSekarang,
+}) async {
+  if (stokSekarang <= 0) {
+    throw Exception('Stok habis');
+  }
+
+  final stokBaru = stokSekarang - 1;
+  final statusBaru = stokBaru == 0 ? 'dipinjam' : 'tersedia';
+
+  final db = Supabase.instance.client;
+  await db
+      .from('alat')
+      .update({'stok': stokBaru, 'status': statusBaru})
+      .eq('id_alat', idAlat);
 }

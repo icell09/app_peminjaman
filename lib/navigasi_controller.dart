@@ -90,62 +90,64 @@ class _NavigationControllerState extends State<NavigationController> {
 
     // Gunakan _currentRole yang sudah diupdate dari Database
     if (_currentRole == Role.admin) {
-<<<<<<< HEAD
-      screens = [const BerandaAdmin(), const AlatAdmin(), const PenggunaAdmin(), const AktivitasAdmin(),  ProfilAdmin()];
-      navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.business_center_outlined), label: 'Alat'),
-        BottomNavigationBarItem(icon: Icon(Icons.people_outline), label: 'Pengguna'),
-        BottomNavigationBarItem(icon: Icon(Icons.assignment_outlined), label: 'Aktivitas'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
-      ];
-    } else if (_currentRole == Role.petugas) {
-      screens = [const BerandaPetugas(), const PersetujuanPetugas(), const PengembalianPetugas(), const LaporanPetugas(), const ProfilPetugas()];
-      navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.inventory_outlined), label: 'Persetujuan'),
-        BottomNavigationBarItem(icon: Icon(Icons.assignment_return_outlined), label: 'Pengembalian'),  
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart_outlined), label: 'Laporan'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),  
-=======
       screens = [
         const BerandaAdmin(),
         const AlatAdmin(),
         const PenggunaAdmin(),
-        AktivitasAdmin(),
-        const ProfilAdmin(),
+        const AktivitasAdmin(),
+        ProfilAdmin(),
       ];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.work), label: 'Alat'),
-        BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Pengguna'),
         BottomNavigationBarItem(
-          icon: Icon(Icons.assignment),
+          icon: Icon(Icons.home_outlined),
+          label: 'Beranda',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.business_center_outlined),
+          label: 'Alat',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.people_outline),
+          label: 'Pengguna',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.assignment_outlined),
           label: 'Aktivitas',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: 'Profil',
+        ),
       ];
     } else if (_currentRole == Role.petugas) {
       screens = [
         const BerandaPetugas(),
         const PersetujuanPetugas(),
-        const LaporanPetugas(),
         const PengembalianPetugas(),
+        const LaporanPetugas(),
         const ProfilPetugas(),
       ];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Beranda'),
         BottomNavigationBarItem(
-          icon: Icon(Icons.inventory),
+          icon: Icon(Icons.home_outlined),
+          label: 'Beranda',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.inventory_outlined),
           label: 'Persetujuan',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: 'Laporan'),
         BottomNavigationBarItem(
-          icon: Icon(Icons.assignment_return),
+          icon: Icon(Icons.assignment_return_outlined),
           label: 'Pengembalian',
         ),
-        BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
->>>>>>> 8a311b07cca40b07a2bd8166f3ac8ad1395e49c6
+        BottomNavigationBarItem(
+          icon: Icon(Icons.bar_chart_outlined),
+          label: 'Laporan',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: 'Profil',
+        ),
       ];
     } else {
       screens = [
@@ -154,9 +156,18 @@ class _NavigationControllerState extends State<NavigationController> {
         const ProfilPeminjam(),
       ];
       navItems = const [
-        BottomNavigationBarItem(icon: Icon(Icons.home_outlined), label: 'Beranda'),
-        BottomNavigationBarItem(icon: Icon(Icons.history_outlined), label: 'Pinjaman'),
-        BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profil'),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.home_outlined),
+          label: 'Beranda',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.history_outlined),
+          label: 'Pinjaman',
+        ),
+        BottomNavigationBarItem(
+          icon: Icon(Icons.person_outline),
+          label: 'Profil',
+        ),
       ];
     }
 
