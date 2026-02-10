@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../controller/persetujuan_controller.dart';
 
 class PersetujuanPetugas extends StatefulWidget {
   const PersetujuanPetugas({super.key});
@@ -9,216 +9,243 @@ class PersetujuanPetugas extends StatefulWidget {
 }
 
 class _PersetujuanPetugasState extends State<PersetujuanPetugas> {
-  // Define your controller here
-  // late YourControllerType _controller;
+  late final PersetujuanController controller;
 
   @override
   void initState() {
     super.initState();
-    // Initialize your controller here
-    // _controller = YourControllerType();
+
+    controller = PersetujuanController();
+
+    // Terima pesan dari controller untuk ditampilkan di UI
+    controller.onMessage = (msg, type) {
+      if (!mounted) return;
+
+      if (type == MessageType.success) {
+        _showSuccessDialog(msg);
+        return;
+      }
+
+      Color color = Colors.green;
+      if (type == MessageType.warning) {
+        color = Colors.orange;
+      } else if (type == MessageType.error) {
+        color = Colors.red;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          backgroundColor: color,
+          content: Text(msg),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    };
+
+    controller.load();
   }
 
-  // Fungsi untuk menampilkan Pop-up Sukses (seperti gambar 2)
-  void _showSuccessDialog() {
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  // ======================
+  // DIALOGS (UI ONLY)
+  // ======================
+  void _showSuccessDialog(String message) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(30.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 100),
+              const SizedBox(height: 20),
+              Text(
+                message,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+            ],
           ),
-          child: Padding(
-            padding: const EdgeInsets.all(30.0),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF4CAF50),
-                  size: 100,
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  "Peminjaman telah disetujui",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
+        ),
+      ),
     );
   }
 
-  // Fungsi untuk menampilkan Pop-up Penolakan (seperti gambar 3)
-  void _showRejectDialog() {
+  void _showRejectDialog(String idPeminjaman) {
+    final alasanCtrl = TextEditingController();
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(25)),
       ),
-      builder:
-          (context) => Padding(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(context).viewInsets.bottom,
-              left: 20,
-              right: 20,
-              top: 20,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+          left: 20,
+          right: 20,
+          top: 20,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "Alasan Penolakan",
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Alasan Penolakan",
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                const Text(
-                  "Mohon isi alasan pengajuan penolakan",
-                  style: TextStyle(color: Colors.grey),
-                ),
-                const SizedBox(height: 15),
-                TextField(
-                  maxLines: 4,
-                  decoration: InputDecoration(
-                    hintText: "Tulis alasan penolakan disini",
-                    filled: true,
-                    fillColor: const Color(0xFFE3F2FD),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(15),
-                      borderSide: BorderSide.none,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  children: [
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.grey.shade300,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text("Batal"),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              backgroundColor: Colors.orange,
-                              content: Text("Penolakan telah dikirim"),
-                            ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0061D1),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          "Kirim",
-                          style: TextStyle(color: Colors.white),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-              ],
+            const Text(
+              "Mohon isi alasan pengajuan penolakan",
+              style: TextStyle(color: Colors.grey),
             ),
-          ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
-        children: [
-          // Header Biru
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-            decoration: const BoxDecoration(
-              color: Color(0xFF0061D1),
-              borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: const [
-                Text(
-                  "Persetujuan",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  "Kelola data persetujuan alat laboratorium",
-                  style: TextStyle(color: Colors.white70, fontSize: 13),
-                ),
-              ],
-            ),
-          ),
-
-          // Search Bar
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: TextField(
+            const SizedBox(height: 15),
+            TextField(
+              controller: alasanCtrl,
+              maxLines: 4,
               decoration: InputDecoration(
-                hintText: "Cari nama / alat",
-                prefixIcon: const Icon(Icons.search),
+                hintText: "Tulis alasan penolakan disini",
                 filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                fillColor: const Color(0xFFE3F2FD),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide.none,
                 ),
               ),
             ),
-          ),
-
-          // List Pengajuan
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+            const SizedBox(height: 20),
+            Row(
               children: [
-                _buildApprovalCard(
-                  "Monica",
-                  "Mouse Logitech G305",
-                  "2",
-                  "20-12-2025 s/d 25-12-2025",
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.grey.shade300,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text("Batal"),
+                  ),
                 ),
-                _buildApprovalCard(
-                  "Monica",
-                  "Mouse Logitech G305",
-                  "1",
-                  "21-12-2025 s/d 23-12-2025",
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      final alasan = alasanCtrl.text;
+                      Navigator.pop(context);
+                      await controller.tolak(idPeminjaman, alasan);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF0061D1),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    child: const Text(
+                      "Kirim",
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 20),
+          ],
+        ),
       ),
+    ).whenComplete(() => alasanCtrl.dispose());
+  }
+
+  // ======================
+  // UI BUILD
+  // ======================
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: controller,
+      builder: (context, _) {
+        return Scaffold(
+          backgroundColor: const Color(0xFFF8F9FA),
+          body: Column(
+            children: [
+              // Header Biru
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+                decoration: const BoxDecoration(
+                  color: Color(0xFF0061D1),
+                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Persetujuan",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Kelola data persetujuan alat laboratorium",
+                      style: TextStyle(color: Colors.white70, fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Expanded(
+                child: controller.loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : controller.items.isEmpty
+                        ? const Center(child: Text("Tidak ada pengajuan menunggu"))
+                        : ListView.builder(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            itemCount: controller.items.length,
+                            itemBuilder: (context, i) {
+                              final r = controller.items[i];
+
+                              final idPeminjaman = r['id_peminjaman'].toString();
+                              final idUser = r['id_user'].toString();
+
+                              final mulai = controller.formatDate(r['tgl_pinjam']);
+                              final selesai = controller.formatDate(
+                                r['tgl_kembali_rencana'],
+                              );
+                              final date = "$mulai s/d $selesai";
+
+                              return _buildApprovalCard(
+                                idPeminjaman: idPeminjaman,
+                                idUser: idUser,
+                                date: date,
+                              );
+                            },
+                          ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
-  Widget _buildApprovalCard(String name, String item, String qty, String date) {
+  Widget _buildApprovalCard({
+    required String idPeminjaman,
+    required String idUser,
+    required String date,
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 20),
       padding: const EdgeInsets.all(15),
@@ -236,19 +263,15 @@ class _PersetujuanPetugasState extends State<PersetujuanPetugas> {
             children: [
               const CircleAvatar(child: Icon(Icons.person_outline)),
               const SizedBox(width: 12),
-              Text(
-                name,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+              Expanded(
+                child: Text(
+                  "User: $idUser",
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
                   color: Colors.orange.shade100,
                   borderRadius: BorderRadius.circular(10),
@@ -265,33 +288,6 @@ class _PersetujuanPetugasState extends State<PersetujuanPetugas> {
             ],
           ),
           const Divider(height: 25),
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.mouse, size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Text(item, style: const TextStyle(fontSize: 13))),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade100,
-                  borderRadius: BorderRadius.circular(5),
-                ),
-                child: Text(
-                  qty,
-                  style: const TextStyle(fontSize: 12, color: Colors.blue),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 15),
           const Text(
             "Tanggal Pinjam",
             style: TextStyle(
@@ -306,7 +302,7 @@ class _PersetujuanPetugasState extends State<PersetujuanPetugas> {
             children: [
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _showRejectDialog,
+                  onPressed: () => _showRejectDialog(idPeminjaman),
                   icon: const Icon(Icons.close, size: 18),
                   label: const Text("Tolak"),
                   style: ElevatedButton.styleFrom(
@@ -321,7 +317,7 @@ class _PersetujuanPetugasState extends State<PersetujuanPetugas> {
               const SizedBox(width: 10),
               Expanded(
                 child: ElevatedButton.icon(
-                  onPressed: _showSuccessDialog,
+                  onPressed: () => controller.setujui(idPeminjaman),
                   icon: const Icon(Icons.check, size: 18),
                   label: const Text("Setujui"),
                   style: ElevatedButton.styleFrom(

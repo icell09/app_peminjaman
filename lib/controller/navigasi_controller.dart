@@ -2,23 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import file Admin
-import 'pages/admin/beranda_admin.dart';
-import 'pages/admin/alat_admin.dart';
-import 'pages/admin/pengguna_admin.dart';
-import 'pages/admin/aktivitas_admin.dart';
-import 'pages/admin/profil_admin.dart';
+import '../pages/admin/beranda_admin.dart';
+import '../pages/admin/alat_admin.dart';
+import '../pages/admin/pengguna_admin.dart';
+import '../pages/admin/aktivitas_admin.dart';
+import '../pages/admin/profil_admin.dart';
 
 // Import file Petugas
-import 'pages/petugas/beranda_petugas.dart';
-import 'pages/petugas/persetujuan_petugas.dart';
-import 'pages/petugas/laporan_petugas.dart';
-import 'pages/petugas/pengembalian_petugas.dart';
-import 'pages/petugas/profil_petugas.dart';
+import '../pages/petugas/beranda_petugas.dart';
+import '../pages/petugas/persetujuan_petugas.dart';
+import '../pages/petugas/laporan_petugas.dart';
+import '../pages/petugas/pengembalian_petugas.dart';
+import '../pages/petugas/profil_petugas.dart';
 
 // Import file Peminjam
-import 'pages/peminjam/beranda_peminjam.dart';
-import 'pages/peminjam/pinjaman_peminjam.dart';
-import 'pages/peminjam/profil_peminjam.dart';
+import '../pages/peminjam/beranda_peminjam.dart';
+import '../pages/peminjam/pinjaman_peminjam.dart';
+import '../pages/peminjam/profil_peminjam.dart';
 
 enum Role { admin, petugas, peminjam }
 
@@ -124,7 +124,7 @@ class _NavigationControllerState extends State<NavigationController> {
         const BerandaPetugas(),
         const PersetujuanPetugas(),
         const PengembalianPetugas(),
-        const LaporanPetugas(),
+        LaporanPetugas(),
         const ProfilPetugas(),
       ];
       navItems = const [

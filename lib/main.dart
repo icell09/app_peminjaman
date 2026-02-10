@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 // Import file navigasi utama (Controller)
-import 'navigasi_controller.dart'; 
+import 'controller/navigasi_controller.dart'; 
 // Import screens
 import 'screens/login.dart';
 import 'screens/splash_screen.dart';

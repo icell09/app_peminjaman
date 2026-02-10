@@ -1,23 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
-void main() {
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(fontFamily: 'Lato'),
-      home: const BerandaAdmin(),
-    );
-  }
-}
-
 class BerandaAdmin extends StatelessWidget {
   const BerandaAdmin({super.key});
 
@@ -25,14 +8,12 @@ class BerandaAdmin extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[100],
-
-      // ✅ FIX OVERFLOW: dibuat scrollable
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.only(bottom: 16),
           child: Column(
             children: [
-              // --- HEADER ---
+              // header
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: Container(
@@ -71,11 +52,6 @@ class BerandaAdmin extends StatelessWidget {
                   children: [
                     _buildWelcomeCard(),
                     const SizedBox(height: 20),
-
-                    // ✅ BONUS: agar aman di HP kecil (bisa geser kiri-kanan)
-                    _buildSummaryGrid(),
-                    const SizedBox(height: 24),
-
                     const Text(
                       "Grafik Alat Yang Sering Dipinjam",
                       style: TextStyle(

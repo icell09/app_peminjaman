@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../controller/beranda_petugas_controller.dart';
+
 void main() {
   runApp(
     const MaterialApp(
@@ -17,7 +19,19 @@ class BerandaPetugas extends StatefulWidget {
 }
 
 class _BerandaPetugasState extends State<BerandaPetugas> {
-  int _selectedIndex = 0;
+  late final BerandaController _controller;  // Controller untuk mengatur data & logika
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = BerandaController();  // Inisialisasi controller
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();  // Bersihkan resource (ValueNotifier dll) saat halaman ditutup
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -26,7 +40,7 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // --- HEADER SECTION ---
+            // header
             Container(
               width: double.infinity,
               padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
@@ -56,7 +70,7 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
               ),
             ),
 
-            // --- WELCOME CARD ---
+            // welcome card
             Padding(
               padding: const EdgeInsets.all(20),
               child: Container(
@@ -111,51 +125,28 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
               ),
             ),
 
-            // --- STATUS GRID ---
+            // kotak status 
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _statusCard(
-                      "4",
-                      "Menunggu\nPersetujuan",
-                      const Color(0xFFFFE8E0),
-                      const Color(0xFFE65100),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _statusCard(
-                      "4",
-                      "Terlambat",
-                      const Color(0xFFFFE0E0),
-                      const Color(0xFFD32F2F),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _statusCard(
-                      "4",
-                      "Dikembalikan",
-                      const Color(0xFFE8F5E9),
-                      const Color(0xFF2E7D32),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: _statusCard(
-                      "4",
-                      "Dipinjam",
-                      const Color(0xFFE3F2FD),
-                      const Color(0xFF1565C0),
-                    ),
-                  ),
-                ],
+              child: ValueListenableBuilder<Map<String, int>>(
+                valueListenable: _controller.statusCountsNotifier,  // Dengarkan perubahan jumlah dari controller
+                builder: (context, counts, child) {
+                  return Row(
+                    children: [
+                      Expanded(child: _statusCard(counts['menunggu']!.toString(), "Menunggu\nPersetujuan", const Color(0xFFFFE8E0), const Color(0xFFE65100))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _statusCard(counts['terlambat']!.toString(), "Terlambat", const Color(0xFFFFE0E0), const Color(0xFFD32F2F))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _statusCard(counts['dikembalikan']!.toString(), "Dikembalikan", const Color(0xFFE8F5E9), const Color(0xFF2E7D32))),
+                      const SizedBox(width: 10),
+                      Expanded(child: _statusCard(counts['dipinjam']!.toString(), "Dipinjam", const Color(0xFFE3F2FD), const Color(0xFF1565C0))),
+                    ],
+                  );
+                },
               ),
             ),
 
-            // --- RECENT ACTIVITY ---
+            // Judul aktivitas terbaru
             const Padding(
               padding: EdgeInsets.fromLTRB(20, 25, 20, 10),
               child: Align(
@@ -167,11 +158,48 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
               ),
             ),
 
-            _activityTile("Monica melakukan pengajuan peminjaman alat"),
-            _activityTile("Monica melakukan pengajuan peminjaman alat"),
-            _activityTile("Monica melakukan pengajuan peminjaman alat"),
+            // --- List Aktivitas (real-time) ---
+            StreamBuilder<List<Map<String, dynamic>>>(
+              stream: _controller.activityStream,  // Stream dari controller (yang ambil dari service)
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                final activities = snapshot.data ?? [];
+                if (activities.isEmpty) {
+                  return const Padding(padding: EdgeInsets.all(20), child: Text('Belum ada aktivitas'));
+                }
 
-            const SizedBox(height: 20),
+                return Column(
+                  children: activities.map((act) {
+                    final createdAtRaw = act['created_at'];
+    
+    String formattedDate = '-';
+    String relativeTime = 'waktu tidak diketahui';
+
+    if (createdAtRaw != null && createdAtRaw is String && createdAtRaw.isNotEmpty) {
+      try {
+        final date = DateTime.parse(createdAtRaw);
+        formattedDate = DateFormat('dd-MM-yyyy').format(date);
+        relativeTime = _controller.getRelativeTime(date);
+      } catch (e) {
+        // Jika parsing gagal (format tanggal salah)
+        formattedDate = 'Format tanggal salah';
+        relativeTime = 'error';
+        debugPrint('Gagal parse created_at: $createdAtRaw → $e');
+      }
+    }
+
+    return _activityTile(
+      act['pesan'] as String? ?? 'Aktivitas tidak diketahui',
+      '$formattedDate | $relativeTime',
+    );
+  }).toList(),
+);
+              },
+            ),
+
+            const SizedBox(height: 40),
           ],
         ),
       ),
@@ -216,40 +244,25 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
   }
 
   // Widget Helper untuk List Aktivitas
-  Widget _activityTile(String msg) {
+  Widget _activityTile(String msg, String time) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
       padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8),
-        ],
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.notifications_active,
-            color: Color(0xFF0061D1),
-            size: 28,
-          ),
+          const Icon(Icons.notifications_active, color: Color(0xFF0061D1), size: 28),
           const SizedBox(width: 15),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  msg,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const Text(
-                  "20-01-2026 | 4 jam yang lalu",
-                  style: TextStyle(fontSize: 11, color: Colors.grey),
-                ),
+                Text(msg, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                Text(time, style: const TextStyle(fontSize: 11, color: Colors.grey)),
               ],
             ),
           ),
@@ -258,4 +271,8 @@ class _BerandaPetugasState extends State<BerandaPetugas> {
       ),
     );
   }
+}
+
+DateFormat(String s) {
+
 }

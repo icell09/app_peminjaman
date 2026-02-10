@@ -1,167 +1,179 @@
 import 'package:flutter/material.dart';
-import 'package:printing/printing.dart';
-import '../../services/petugas_service.dart';
-import 'package:pdf/widgets.dart' as pw;
+import 'laporan_petugas_preview.dart'; // Pastikan file preview sudah dibuat
 
-class LaporanPetugas extends StatefulWidget {
-  const LaporanPetugas({super.key});
-
-  @override
-  State<LaporanPetugas> createState() => _LaporanPetugasState();
-}
-
-class _LaporanPetugasState extends State<LaporanPetugas> {
-  final PetugasController _controller = PetugasController();
-
-  String _jenisLaporan = 'Harian';
-  DateTime _selectedDate = DateTime.now();
-
-  // =========================
-  // AMBIL PERIODE
-  // =========================
-  DateTime get _startDate {
-    if (_jenisLaporan == 'Harian') {
-      return DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-      );
-    }
-    return DateTime(_selectedDate.year, _selectedDate.month, 1);
-  }
-
-  DateTime get _endDate {
-    if (_jenisLaporan == 'Harian') {
-      return DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
-        23,
-        59,
-        59,
-      );
-    }
-    return DateTime(_selectedDate.year, _selectedDate.month + 1, 0, 23, 59, 59);
-  }
-
-  // =========================
-  // CETAK / PREVIEW PDF
-  // =========================
-  Future<void> _cetakPdf() async {
-    try {
-      final pdfData = await _controller.generateLaporanPetugasPdf(
-        namaPetugas: 'Tes',
-        periode: 'Harian',
-        totalPeminjaman: 5,
-        selesai: 3,
-        terlambat: 1,
-      );
-
-      await Printing.layoutPdf(
-        name: 'Laporan_Petugas.pdf',
-        onLayout: (format) async => pdfData,
-      );
-    } catch (e) {
-      debugPrint('CETAK ERROR: $e');
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal cetak PDF')));
-    }
-  }
-
-  // =========================
-  // UI
-  // =========================
+class LaporanPetugas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Laporan Petugas')),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // =========================
-            // PILIH JENIS LAPORAN
-            // =========================
-            const Text(
-              'Jenis Laporan',
-              style: TextStyle(fontWeight: FontWeight.bold),
+      backgroundColor: Colors.white,
+      body: Column(
+        children: [
+          // 1. Header Biru Melengkung (Sesuai Gambar 2)
+          Container(
+            padding: EdgeInsets.only(top: 60, left: 20, right: 20, bottom: 20),
+            decoration: BoxDecoration(
+              color: Color(0xFF0056C1), // Warna biru sesuai gambar
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(20),
+                bottomRight: Radius.circular(20),
+              ),
             ),
-            const SizedBox(height: 8),
-
-            DropdownButtonFormField<String>(
-              value: _jenisLaporan,
-              items: const [
-                DropdownMenuItem(value: 'Harian', child: Text('Harian')),
-                DropdownMenuItem(value: 'Bulanan', child: Text('Bulanan')),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Laporan",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      "Laporan data peminjaman alat laboratorium",
+                      style: TextStyle(color: Colors.white70, fontSize: 12),
+                    ),
+                  ],
+                ),
+                Icon(Icons.notifications, color: Colors.white, size: 28),
               ],
-              onChanged: (value) {
-                setState(() {
-                  _jenisLaporan = value!;
-                });
-              },
-              decoration: const InputDecoration(border: OutlineInputBorder()),
             ),
+          ),
+          
 
-            const SizedBox(height: 16),
-
-            // =========================
-            // PILIH TANGGAL
-            // =========================
-            const Text(
-              'Tanggal',
-              style: TextStyle(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-
-            InkWell(
-              onTap: () async {
-                final picked = await showDatePicker(
-                  context: context,
-                  initialDate: _selectedDate,
-                  firstDate: DateTime(2020),
-                  lastDate: DateTime.now(),
-                );
-
-                if (picked != null) {
-                  setState(() {
-                    _selectedDate = picked;
-                  });
-                }
-              },
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(6),
+          // 2. Tombol Filter & Download
+          Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {},
+                        child: Text("Hari ini", style: TextStyle(color: Color(0xFF0056C1))),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(color: Color(0xFF0056C1)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: 15),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          // Navigasi ke Preview PDF (Gambar 1)
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => PreviewLaporanPage()),
+                          );
+                        },
+                        child: Text("Download PDF", style: TextStyle(color: Colors.white)),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Color(0xFF0056C1),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  '${_selectedDate.day}-${_selectedDate.month}-${_selectedDate.year}',
+                SizedBox(height: 20),
+                // Statistik Angka
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    _buildStatColumn("2", "Dipinjam"),
+                    _buildStatColumn("2", "Kembali"),
+                  ],
                 ),
-              ),
+              ],
             ),
+          ),
 
-            const Spacer(),
-
-            // =========================
-            // BUTTON CETAK
-            // =========================
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Cetak PDF'),
-                onPressed: _cetakPdf,
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+          // 3. Daftar Laporan (Card Monica)
+          Expanded(
+            child: ListView(
+              padding: EdgeInsets.symmetric(horizontal: 20),
+              children: [
+                _buildLaporanCard(
+                  nama: "Monica",
+                  tanggal: "20-12-2025 s/d 25-12-2025",
+                  items: [
+                    {"alat": "Proyektor", "qty": "2 unit"},
+                  ],
                 ),
-              ),
+                _buildLaporanCard(
+                  nama: "Monica",
+                  tanggal: "20-12-2025 s/d 25-12-2025",
+                  items: [
+                    {"alat": "Proyektor", "qty": "2 unit"},
+                    {"alat": "Flashdisk", "qty": "1 unit"},
+                  ],
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
-}
+
+  Widget _buildStatColumn(String value, String label) {
+    return Column(
+      children: [
+        Text(value, style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(label, style: TextStyle(color: Colors.black54)),
+      ],
+    );
+  }
+
+  Widget _buildLaporanCard({required String nama, required String tanggal, required List<Map<String, String>> items}) {
+    return Container(
+      margin: EdgeInsets.only(bottom: 15),
+      padding: EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: Colors.grey.shade300),
+        boxShadow: [
+          BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2)),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 25,
+                backgroundColor: Colors.blue.shade100,
+                child: Icon(Icons.person, color: Color(0xFF0056C1), size: 30),
+              ),
+              SizedBox(width: 15),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(nama, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(tanggal, style: TextStyle(fontSize: 11, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
+          Divider(height: 25, thickness: 1),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.symmetric(vertical: 5),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(item['alat']!, style: TextStyle(fontSize: 15, color: Colors.black87)),
+                Text(item['qty']!, style: TextStyle(fontSize: 13, color: Colors.grey)),
+              ],
+            ),
+          )).toList(),
+        ],
+      ),
+    );
+  }
+  }

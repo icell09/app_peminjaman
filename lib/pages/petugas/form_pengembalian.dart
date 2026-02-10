@@ -1,387 +1,277 @@
 import 'package:flutter/material.dart';
-import '../../services/petugas_service.dart';
-import 'pengembalian_petugas.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../controller/form_pengembalian_controller.dart';
 
 class FormPengembalian extends StatefulWidget {
-  const FormPengembalian({super.key});
+  final String idPeminjaman;
+  final DateTime tglTenggat;
+  final String tglPinjamText; // misal: "20-12-2025 12:54"
+  final String namaItem;      // misal: "Mouse Logitech G305"
+  final int qty;              // misal: 2
+
+  const FormPengembalian({
+    super.key,
+    required this.idPeminjaman,
+    required this.tglTenggat,
+    required this.tglPinjamText,
+    required this.namaItem,
+    required this.qty,
+  });
 
   @override
   State<FormPengembalian> createState() => _FormPengembalianState();
 }
 
 class _FormPengembalianState extends State<FormPengembalian> {
-  // Gunakan PetugasController sesuai file service kamu
-  final _service = PetugasController();
+  final controller = FormPengembalianController();
 
-  // Data Dummy (Nanti bisa diambil dari constructor/API)
-  final String tglPinjam = "20-12-2025";
-  final DateTime tglTenggat = DateTime(2025, 12, 25);
+  DateTime? selectedTanggalKembali;
+  TimeOfDay? selectedJamKembali;
 
-  DateTime? tglKembali;
-  TimeOfDay? jamKembali;
+  @override
+  void initState() {
+    super.initState();
 
-  // --- LOGIKA HITUNG DENDA (PERBAIKAN UTAMA) ---
-  Map<String, dynamic> _hitungDenda(DateTime tenggat, DateTime? kembali) {
-    if (kembali == null) {
-      return {'isTerlambat': false, 'selisih': 0, 'denda': 0};
-    }
+    controller.onMessage = (msg, type) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(msg)),
+      );
 
-    // Hanya menghitung tanggal (tanpa jam) untuk selisih hari
-    final dateTenggat = DateTime(tenggat.year, tenggat.month, tenggat.day);
-    final dateKembali = DateTime(kembali.year, kembali.month, kembali.day);
+      if (type == MessageType.success) {
+        Navigator.pop(context);
+      }
+    };
 
-    final selisihHari = dateKembali.difference(dateTenggat).inDays;
+    // Optional: set default ke sekarang
+    selectedTanggalKembali = DateTime.now();
+    selectedJamKembali = TimeOfDay.now();
+  }
 
-    if (selisihHari > 0) {
-      return {
-        'isTerlambat': true,
-        'selisih': selisihHari,
-        'denda': selisihHari * 5000, // Misal denda 5rb per hari
-      };
-    } else {
-      return {'isTerlambat': false, 'selisih': 0, 'denda': 0};
-    }
+  String _formatDateTime(DateTime? date, TimeOfDay? time) {
+    if (date == null || time == null) return "-";
+    final dt = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time.hour,
+      time.minute,
+    );
+    return "${dt.day.toString().padLeft(2, '0')}-${dt.month.toString().padLeft(2, '0')}-${dt.year} ${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}";
   }
 
   @override
   Widget build(BuildContext context) {
-    // Jalankan fungsi hitung denda
-    final Map<String, dynamic> hasil = _hitungDenda(tglTenggat, tglKembali);
-    bool sudahInputLengkap = tglKembali != null && jamKembali != null;
+    final hasil = controller.hitungDenda(widget.tglTenggat, tglTenggat: widget.tglTenggat);
+    final bool terlambat = hasil['terlambat'] == true;
+    final int denda = hasil['denda'] ?? 0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      body: Column(
-        children: [
-          _buildHeader(context),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(25),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildItemCard("Mouse Logitech G305", "2"),
-                  const SizedBox(height: 25),
-
-                  _buildLabel("Tanggal Pinjam :"),
-                  _buildRowInfo(tglPinjam, "12:54"),
-                  const SizedBox(height: 15),
-
-                  _buildLabel("Tanggal Tenggat :"),
-                  _buildRowInfo("25-12-2025", "14:00"),
-                  const SizedBox(height: 15),
-
-                  _buildLabel("Tanggal Pengembalian (Input Petugas) :"),
-                  _buildInputTanggalWaktu(),
-
-                  // Muncul otomatis jika terlambat & input lengkap
-                  if (sudahInputLengkap && hasil['isTerlambat']) ...[
-                    const SizedBox(height: 25),
-                    _buildLateCard(hasil['selisih'], hasil['denda']),
-                  ],
-
-                  const SizedBox(height: 40),
-
-                  _buildButtonKonfirmasi(sudahInputLengkap, hasil),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- KOMPONEN UI ---
-
-  Widget _buildLateCard(int hari, int denda) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFFFFEBEB),
-        borderRadius: BorderRadius.circular(25),
-        border: Border.all(color: Colors.red.shade300, width: 1.5),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.warning_amber_rounded, color: Colors.red),
-              const SizedBox(width: 10),
-              const Text(
-                "Terlambat!",
-                style: TextStyle(
-                  color: Colors.red,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            "Terlambat $hari hari dari batas waktu.",
-            style: const TextStyle(color: Colors.redAccent),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  "Total Denda",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  "Rp $denda",
-                  style: const TextStyle(
-                    color: Colors.red,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildButtonKonfirmasi(bool isEnabled, Map hasil) => SizedBox(
-    width: double.infinity,
-    height: 55,
-    child: ElevatedButton(
-      style: ElevatedButton.styleFrom(
-        backgroundColor:
-            isEnabled ? const Color(0xFF0061D1) : Colors.grey.shade400,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      ),
-      onPressed:
-          isEnabled
-              ? () {
-                if (hasil['isTerlambat']) {
-                  _showLateSnackBar();
-                }
-                _showSuccessDialog();
-              }
-              : null,
-      child: const Text(
-        "Konfirmasi Pengembalian",
-        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-      ),
-    ),
-  );
-
-  void _showLateSnackBar() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text("Denda keterlambatan telah dicatat"),
-        backgroundColor: Colors.redAccent,
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showSuccessDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (c) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            content: const Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.check_circle, color: Colors.green, size: 60),
-                SizedBox(height: 15),
-                Text(
-                  "Berhasil!",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Text("Data pengembalian telah disimpan."),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(c); // Tutup Dialog
-                  Navigator.pop(context); // Kembali ke list
-                },
-                child: const Text("OK"),
-              ),
-            ],
-          ),
-    );
-  }
-
-  Widget _buildHeader(BuildContext context) => Container(
-    width: double.infinity,
-    height: 110,
-    decoration: const BoxDecoration(
-      color: Color(0xFF0061D1),
-      borderRadius: BorderRadius.vertical(bottom: Radius.circular(25)),
-    ),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 40, left: 10),
-      child: Row(
-        children: [
-          IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.pop(context),
-          ),
-          const Text(
-            "Detail Pengembalian",
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _buildInputTanggalWaktu() => Row(
-    children: [
-      Expanded(
-        child: InkWell(
-          onTap: () async {
-            DateTime? p = await showDatePicker(
-              context: context,
-              initialDate: DateTime.now(),
-              firstDate: DateTime(2024),
-              lastDate: DateTime(2030),
-            );
-            if (p != null) setState(() => tglKembali = p);
-          },
-          child: _buildBoxStyle(
-            "Tanggal",
-            tglKembali == null
-                ? "Isi Tanggal"
-                : "${tglKembali!.day}-${tglKembali!.month}-${tglKembali!.year}",
-            Icons.calendar_month,
-            isFilled: tglKembali != null,
-          ),
+      backgroundColor: Colors.grey[100],
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
         ),
+        title: const Text("Pengembalian"),
+        backgroundColor: Colors.blue,
+        foregroundColor: Colors.white,
       ),
-      const SizedBox(width: 15),
-      Expanded(
-        child: InkWell(
-          onTap: () async {
-            TimeOfDay? t = await showTimePicker(
-              context: context,
-              initialTime: TimeOfDay.now(),
-            );
-            if (t != null) setState(() => jamKembali = t);
-          },
-          child: _buildBoxStyle(
-            "Waktu",
-            jamKembali == null ? "Isi Waktu" : jamKembali!.format(context),
-            Icons.access_time,
-            isFilled: jamKembali != null,
-          ),
-        ),
-      ),
-    ],
-  );
-
-  Widget _buildBoxStyle(
-    String label,
-    String val,
-    IconData icon, {
-    bool isFilled = false,
-  }) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-      const SizedBox(height: 5),
-      Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: const Color(0xFFE3F2FD),
-          borderRadius: BorderRadius.circular(12),
-          border: isFilled ? null : Border.all(color: Colors.blue.shade200),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: Text(
-                val,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: isFilled ? Colors.black : Colors.blueGrey,
-                  fontWeight: isFilled ? FontWeight.bold : FontWeight.normal,
+            // Card Info Peminjaman
+            Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.inventory_2_outlined, color: Colors.blue),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            widget.namaItem,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.blue[100],
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text("×${widget.qty}"),
+                        ),
+                      ],
+                    ),
+                    const Divider(height: 24),
+                    _buildInfoRow("Tanggal Pinjam", widget.tglPinjamText),
+                    const SizedBox(height: 8),
+                    _buildInfoRow("Tanggal Tenggat", 
+                      "${widget.tglTenggat.day.toString().padLeft(2, '0')}-${widget.tglTenggat.month.toString().padLeft(2, '0')}-${widget.tglTenggat.year} 14:00"),
+                  ],
                 ),
               ),
             ),
-            Icon(icon, size: 16, color: Colors.blue),
+
+            const SizedBox(height: 24),
+
+            // Pilih tanggal & jam pengembalian
+            const Text("Tanggal Pengembalian", style: TextStyle(fontWeight: FontWeight.bold)),
+            const SizedBox(height: 8),
+            InkWell(
+              onTap: () async {
+                final date = await showDatePicker(
+                  context: context,
+                  initialDate: selectedTanggalKembali ?? DateTime.now(),
+                  firstDate: DateTime(2024),
+                  lastDate: DateTime(2030),
+                );
+                if (date != null) {
+                  setState(() => selectedTanggalKembali = date);
+                  controller.setTanggal(date);
+                }
+              },
+              child: _buildDateTimeTile(
+                icon: Icons.calendar_today,
+                title: selectedTanggalKembali == null 
+                    ? "Pilih tanggal" 
+                    : "${selectedTanggalKembali!.day.toString().padLeft(2, '0')}-${selectedTanggalKembali!.month.toString().padLeft(2, '0')}-${selectedTanggalKembali!.year}",
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              onTap: () async {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: selectedJamKembali ?? TimeOfDay.now(),
+                );
+                if (time != null) {
+                  setState(() => selectedJamKembali = time);
+                  controller.setJam(time);
+                }
+              },
+              child: _buildDateTimeTile(
+                icon: Icons.access_time,
+                title: selectedJamKembali == null 
+                    ? "Pilih jam" 
+                    : "${selectedJamKembali!.hour.toString().padLeft(2, '0')}:${selectedJamKembali!.minute.toString().padLeft(2, '0')}",
+              ),
+            ),
+
+            const SizedBox(height: 24),
+
+            // Box Denda Keterlambatan
+            if (terlambat)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  border: Border.all(color: Colors.red.shade300),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Colors.red),
+                        SizedBox(width: 8),
+                        Text(
+                          "Pengembalian Terlambat",
+                          style: TextStyle(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      "Terlambat ${hasil['hari']} hari dari estimasi",
+                      style: TextStyle(color: Colors.red[800]),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      "Denda Keterlambatan",
+                      style: TextStyle(color: Colors.red[800]),
+                    ),
+                    Text(
+                      "Rp ${denda.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]}.')}",
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            const SizedBox(height: 32),
+
+            // Tombol Konfirmasi
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: ElevatedButton(
+                onPressed: () {
+                  controller.konfirmasi(
+                    idPeminjaman: widget.idPeminjaman,
+                    tglTenggat: widget.tglTenggat,
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: const Text(
+                  "Konfirmasi Pengembalian",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
           ],
         ),
       ),
-    ],
-  );
+    );
+  }
 
-  Widget _buildItemCard(String n, String q) => Container(
-    padding: const EdgeInsets.all(15),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
-      boxShadow: [
-        BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
-      ],
-    ),
-    child: Row(
+  Widget _buildInfoRow(String label, String value) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        const CircleAvatar(
-          backgroundColor: Color(0xFFF1F4F8),
-          child: Icon(Icons.inventory_2, color: Colors.blue),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: Text(n, style: const TextStyle(fontWeight: FontWeight.bold)),
-        ),
-        Text(
-          "Qty: $q",
-          style: const TextStyle(
-            color: Colors.blue,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey)),
+        Text(value, style: const TextStyle(fontWeight: FontWeight.w500)),
       ],
-    ),
-  );
+    );
+  }
 
-  Widget _buildLabel(String t) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(t, style: const TextStyle(fontWeight: FontWeight.bold)),
-  );
-  Widget _buildRowInfo(String d, String t) => Row(
-    children: [
-      Expanded(
-        child: _buildBoxStyle(
-          "Tanggal",
-          d,
-          Icons.calendar_today,
-          isFilled: true,
-        ),
+  Widget _buildDateTimeTile({required IconData icon, required String title}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(12),
       ),
-      const SizedBox(width: 15),
-      Expanded(
-        child: _buildBoxStyle("Waktu", t, Icons.access_time, isFilled: true),
+      child: Row(
+        children: [
+          Icon(icon, color: Colors.blue),
+          const SizedBox(width: 12),
+          Text(title, style: const TextStyle(fontSize: 16)),
+        ],
       ),
-    ],
-  );
+    );
+  }
 }

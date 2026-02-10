@@ -28,7 +28,7 @@ class PetugasController {
           alat(nama_alat)
         )
       ''')
-        .eq('status', 'menunggu')
+        .eq('status', 'Diajukan')
         .order('tgl_pinjam');
 
     return List<Map<String, dynamic>>.from(res);

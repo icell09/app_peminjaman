@@ -91,6 +91,7 @@ class _BerandaPeminjamState extends State<BerandaPeminjam> {
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Header
                 Padding(
                   padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
                   child: Container(
@@ -122,19 +123,6 @@ class _BerandaPeminjamState extends State<BerandaPeminjam> {
                                 ),
                               ),
                             ],
-                          ),
-                        ),
-                        Container(
-                          width: 34,
-                          height: 34,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.20),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.notifications_none,
-                            color: Colors.white,
-                            size: 20,
                           ),
                         ),
                       ],
