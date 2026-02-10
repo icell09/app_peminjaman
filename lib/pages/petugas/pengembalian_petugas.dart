@@ -30,7 +30,11 @@ class _PengembalianPetugasState extends State<PengembalianPetugas> {
               children: const [
                 Text(
                   "Pengembalian",
-                  style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 Text(
                   "Kelola data pengembalian alat laboratorium",
@@ -144,7 +148,9 @@ class _PengembalianPetugasState extends State<PengembalianPetugas> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10),
+        ],
       ),
       child: Column(
         children: [
@@ -155,49 +161,82 @@ class _PengembalianPetugasState extends State<PengembalianPetugas> {
                 child: Icon(Icons.person_outline, color: Color(0xFF0061D1)),
               ),
               const SizedBox(width: 12),
-              Text(name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+              Text(
+                name,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
               const Spacer(),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: statusColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   status,
-                  style: TextStyle(color: statusColor, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: TextStyle(
+                    color: statusColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              )
+              ),
             ],
           ),
-          const Padding(padding: EdgeInsets.symmetric(vertical: 10), child: Divider()),
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text("Tanggal Pinjam", style: TextStyle(fontSize: 11, color: Colors.grey, fontWeight: FontWeight.bold)),
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 10),
+            child: Divider(),
           ),
           const Align(
             alignment: Alignment.centerLeft,
-            child: Text("20-12-2025 s/d 25-12-2025", style: TextStyle(fontSize: 12)),
+            child: Text(
+              "Tanggal Pinjam",
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const Align(
+            alignment: Alignment.centerLeft,
+            child: Text(
+              "20-12-2025 s/d 25-12-2025",
+              style: TextStyle(fontSize: 12),
+            ),
           ),
           const SizedBox(height: 15),
           SizedBox(
             width: double.infinity,
             child: ElevatedButton.icon(
-              onPressed: isClickable ? () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const FormPengembalian()),
-                );
-              } : null,
+              onPressed:
+                  isClickable
+                      ? () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FormPengembalian(),
+                          ),
+                        );
+                      }
+                      : null,
               icon: const Icon(Icons.check_circle_outline, size: 18),
               label: Text(buttonText),
               style: ElevatedButton.styleFrom(
                 backgroundColor: buttonColor,
                 foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );

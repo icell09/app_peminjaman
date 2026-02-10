@@ -125,7 +125,6 @@ class AlatSupabaseService {
         .eq('id_alat', idAlat);
   }
 
-
   // riwayat peminjaman saya
   Future<List<Map<String, dynamic>>> fetchPinjamanSaya() async {
     final user = _db.auth.currentUser;

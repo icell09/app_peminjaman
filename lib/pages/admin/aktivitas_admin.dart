@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/aktivitas_service.dart';
 
 class AktivitasAdmin extends StatefulWidget {
   const AktivitasAdmin({super.key});
@@ -8,22 +10,33 @@ class AktivitasAdmin extends StatefulWidget {
 }
 
 class _AktivitasAdminState extends State<AktivitasAdmin> {
-  // 1. Variabel state untuk menyimpan filter yang dipilih
   String selectedFilter = 'Semua';
+  List<Map<String, dynamic>> allAktivitas = [];
+  bool loading = true;
 
-  // 2. Data Master (Semua data ada di sini)
-  final List<Map<String, dynamic>> allAktivitas = [
-    {'name': 'Monica', 'status': 'Aktif', 'color': Colors.green},
-    {'name': 'Budi', 'status': 'Pengajuan', 'color': Colors.blue},
-    {'name': 'Santi', 'status': 'Pengembalian', 'color': Colors.orange},
-    {'name': 'Andi', 'status': 'Ditolak', 'color': Colors.red},
-    {'name': 'Rina', 'status': 'Selesai', 'color': Colors.grey},
-    {'name': 'Joko', 'status': 'Aktif', 'color': Colors.green},
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadAktivitas();
+  }
+
+  Future<void> _loadAktivitas() async {
+    try {
+      final data = await AktivitasService().fetchLogs();
+      setState(() {
+        allAktivitas = data;
+        loading = false;
+      });
+    } catch (e) {
+      setState(() => loading = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal memuat data: $e')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // 3. Logika Filter: Menyaring data berdasarkan selectedFilter
     List<Map<String, dynamic>> displayList = allAktivitas;
     if (selectedFilter != 'Semua') {
       displayList =
@@ -33,13 +46,82 @@ class _AktivitasAdminState extends State<AktivitasAdmin> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Log Aktivitas'),
-        backgroundColor: const Color(0xFF0056C1),
-        foregroundColor: Colors.white,
-      ),
-      body: const Center(
-        child: Text('Riwayat peminjaman dan pengembalian muncul di sini'),
+      appBar: AppBar(backgroundColor: Colors.white, elevation: 0),
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            child: Container(
+              width: double.infinity,
+
+              decoration: BoxDecoration(
+                color: const Color(0xFF0061CD),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: const [
+                  Text(
+                    'Aktivitas Admin',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 4),
+                  Text(
+                    'Kelola data peminjaman sekolah dengan mudah',
+                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child:
+                loading
+                    ? const Center(child: CircularProgressIndicator())
+                    : ListView.builder(
+                      padding: const EdgeInsets.all(16),
+                      itemCount: displayList.length,
+                      itemBuilder: (context, index) {
+                        final item = displayList[index];
+
+                        // Jika color dari Supabase berupa string, ubah ke Color
+                        Color statusColor = Colors.grey;
+                        switch (item['status']) {
+                          case 'Aktif':
+                            statusColor = Colors.green;
+                            break;
+                          case 'Pengajuan':
+                            statusColor = Colors.blue;
+                            break;
+                          case 'Pengembalian':
+                            statusColor = Colors.orange;
+                            break;
+                          case 'Ditolak':
+                            statusColor = Colors.red;
+                            break;
+                          case 'Selesai':
+                            statusColor = Colors.grey;
+                            break;
+                        }
+
+                        return ActivityCard(
+                          name: item['id']?.toString() ?? '',
+                          status:
+                              item['status']?.toString() ?? 'Tidak diketahui',
+                          color: statusColor,
+                          itemInfo: item['aktivitas']?.toString() ?? '',
+                          tanggalMulai: item['tanggal_mulai']?.toString() ?? '',
+                          tanggalSelesai:
+                              item['tanggal_selesai']?.toString() ?? '',
+                        );
+                      },
+                    ),
+          ),
+        ],
       ),
     );
   }
@@ -49,11 +131,18 @@ class ActivityCard extends StatelessWidget {
   final String name;
   final String status;
   final Color color;
+  final String itemInfo;
+  final String tanggalMulai;
+  final String tanggalSelesai;
+
   const ActivityCard({
     super.key,
     required this.name,
     required this.status,
     required this.color,
+    required this.itemInfo,
+    required this.tanggalMulai,
+    required this.tanggalSelesai,
   });
 
   @override
@@ -138,10 +227,10 @@ class ActivityCard extends StatelessWidget {
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          Icon(Icons.inventory_2_outlined, size: 14, color: Colors.grey),
-          SizedBox(width: 8),
-          Text('Mouse Logitech (1x)', style: TextStyle(fontSize: 12)),
+        children: [
+          const Icon(Icons.inventory_2_outlined, size: 14, color: Colors.grey),
+          const SizedBox(width: 8),
+          Text(itemInfo, style: const TextStyle(fontSize: 12)),
         ],
       ),
     );
@@ -152,12 +241,16 @@ class ActivityCard extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
-          children: const [
-            Icon(Icons.calendar_month_outlined, size: 16, color: Colors.grey),
-            SizedBox(width: 8),
+          children: [
+            const Icon(
+              Icons.calendar_month_outlined,
+              size: 16,
+              color: Colors.grey,
+            ),
+            const SizedBox(width: 8),
             Text(
-              '20-12-2025 s/d 25-12-2025',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              '$tanggalMulai s/d $tanggalSelesai',
+              style: const TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],
         ),

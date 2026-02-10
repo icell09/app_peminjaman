@@ -33,6 +33,9 @@ dependencies:
   supabase_flutter: ^2.8.0
   cupertino_icons: ^1.0.8
   image_picker: ^1.1.2
+  pdf: ^3.10.7
+  printing: ^5.11.1
+
   
 
 dev_dependencies:

@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../services/peminjam_service.dart';
 
 class FormPeminjaman extends StatefulWidget {
   final List<Map<String, dynamic>> alatDipilih;
@@ -51,12 +53,12 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
       _waktuKembali != null;
 
   BoxDecoration _cardDecoration() => BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10),
-        ],
-      );
+    color: Colors.white,
+    borderRadius: BorderRadius.circular(14),
+    boxShadow: [
+      BoxShadow(color: Colors.black.withOpacity(0.06), blurRadius: 10),
+    ],
+  );
 
   // ===== Qty/Delete =====
   void _ubahJumlah(int index, int delta) {
@@ -125,26 +127,39 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
   }
 
   // ===== Submit =====
-  void _ajukan() {
+  void _ajukan() async {
     if (!_valid) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Lengkapi alat, tanggal & waktu dulu')),
+        const SnackBar(content: Text('Lengkapi alat dan tanggal dulu')),
       );
       return;
     }
 
-    final payload = {
-      'tanggal_pinjam': _tanggalPinjam!.toIso8601String(),
-      'tanggal_kembali': _tanggalKembali!.toIso8601String(),
-      'waktu_pinjam': _formatTimeForDb(_waktuPinjam!),
-      'waktu_kembali': _formatTimeForDb(_waktuKembali!),
-      'alat': _alatList,
-    };
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) {
+        throw 'User belum login';
+      }
 
-    debugPrint('SUBMIT: $payload');
+      final service = PeminjamanService();
 
-    // balik ke beranda + kasih tanda submitted=true
-    Navigator.pop(context, {'items': _alatList, 'submitted': true});
+      await service.ajukanPeminjaman(
+        idUser: user.id,
+        tglPinjam: _tanggalPinjam!,
+        tglKembaliRencana: _tanggalKembali!,
+        alat: _alatList,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Peminjaman berhasil diajukan')),
+      );
+
+      Navigator.pop(context, {'items': _alatList, 'submitted': true});
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal mengajukan: $e')));
+    }
   }
 
   @override
@@ -188,19 +203,24 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
                                     width: 62,
                                     height: 62,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, __, ___) => Container(
-                                      width: 62,
-                                      height: 62,
-                                      color: Colors.grey.shade200,
-                                      child: const Icon(Icons.image_not_supported),
-                                    ),
+                                    errorBuilder:
+                                        (_, __, ___) => Container(
+                                          width: 62,
+                                          height: 62,
+                                          color: Colors.grey.shade200,
+                                          child: const Icon(
+                                            Icons.image_not_supported,
+                                          ),
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(
                                     alat['nama_alat']?.toString() ?? '-',
-                                    style: const TextStyle(fontWeight: FontWeight.bold),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
                                   ),
                                 ),
                                 _qtyBox(
@@ -211,7 +231,10 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
                                 const SizedBox(width: 8),
                                 InkWell(
                                   onTap: () => _hapusAlat(i),
-                                  child: const Icon(Icons.delete, color: Colors.blue),
+                                  child: const Icon(
+                                    Icons.delete,
+                                    color: Colors.blue,
+                                  ),
                                 ),
                               ],
                             ),
@@ -235,14 +258,20 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
                         onPressed: _kembaliUntukTambahAlat,
                         child: const Text(
                           'Tambahkan alat',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
 
                     const SizedBox(height: 18),
 
-                    const Text('Peminjaman', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Peminjaman',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -266,7 +295,10 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
 
                     const SizedBox(height: 14),
 
-                    const Text('Pengembalian', style: TextStyle(fontWeight: FontWeight.bold)),
+                    const Text(
+                      'Pengembalian',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -303,7 +335,10 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
                         onPressed: _ajukan,
                         child: const Text(
                           'Ajukan Peminjaman',
-                          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -386,7 +421,10 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
           Container(
             alignment: Alignment.center,
             width: 26,
-            child: Text('$qty', style: const TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              '$qty',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
           InkWell(
             onTap: onPlus,
@@ -420,9 +458,10 @@ class _FormPeminjamanState extends State<FormPeminjaman> {
               child: Text(
                 text,
                 style: TextStyle(
-                  color: (text == 'Pilih tanggal' || text == 'Waktu')
-                      ? Colors.black54
-                      : Colors.black87,
+                  color:
+                      (text == 'Pilih tanggal' || text == 'Waktu')
+                          ? Colors.black54
+                          : Colors.black87,
                   fontSize: 12,
                 ),
                 overflow: TextOverflow.ellipsis,

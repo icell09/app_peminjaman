@@ -63,7 +63,7 @@ class BerandaAdmin extends StatelessWidget {
                 ),
               ),
 
-              // --- KONTEN ---
+              //KONTEN
               Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(
@@ -78,7 +78,10 @@ class BerandaAdmin extends StatelessWidget {
 
                     const Text(
                       "Grafik Alat Yang Sering Dipinjam",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                     ),
                     const SizedBox(height: 12),
                     _buildChartCard(),
@@ -108,8 +111,14 @@ class BerandaAdmin extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: const [
-                Text("Selamat Datang,", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
-                Text("Admin 👋", style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                Text(
+                  "Selamat Datang,",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  "Admin 👋",
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
               ],
             ),
           ),
@@ -120,27 +129,36 @@ class BerandaAdmin extends StatelessWidget {
     );
   }
 
-  // ✅ Dibuat horizontal scroll agar tidak sempit di layar kecil
   Widget _buildSummaryGrid() {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _statCard("4", "Total Alat", Colors.blue[100]!, Colors.blue),
-          const SizedBox(width: 12),
-          _statCard("4", "Alat Rusak", Colors.red[100]!, Colors.red),
-          const SizedBox(width: 12),
-          _statCard("4", "Alat Tersedia", Colors.green[100]!, Colors.green),
-          const SizedBox(width: 12),
-          _statCard("4", "Sedang Dipinjam", Colors.orange[100]!, Colors.orange),
-        ],
-      ),
+    return Row(
+      children: [
+        Expanded(
+          child: _statCard("4", "Total Alat", Colors.blue[100]!, Colors.blue),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _statCard(
+            "4",
+            "Alat Tersedia",
+            Colors.green[100]!,
+            Colors.green,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _statCard(
+            "4",
+            "Sedang Dipinjam",
+            Colors.orange[100]!,
+            Colors.orange,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _statCard(String value, String label, Color bgColor, Color textColor) {
     return Container(
-      width: 80,
       padding: const EdgeInsets.symmetric(vertical: 15),
       decoration: BoxDecoration(
         color: bgColor,
@@ -151,7 +169,11 @@ class BerandaAdmin extends StatelessWidget {
         children: [
           Text(
             value,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black),
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.black,
+            ),
           ),
           const SizedBox(height: 2),
           Text(
@@ -175,7 +197,7 @@ class BerandaAdmin extends StatelessWidget {
       ),
       child: BarChart(
         BarChartData(
-          alignment: BarChartAlignment.spaceAround,
+          alignment: BarChartAlignment.spaceBetween,
           maxY: 250,
           barTouchData: BarTouchData(enabled: true),
           titlesData: FlTitlesData(
@@ -185,7 +207,13 @@ class BerandaAdmin extends StatelessWidget {
                 showTitles: true,
                 reservedSize: 45,
                 getTitlesWidget: (value, meta) {
-                  const titles = ['Mouse', 'Kybord', 'Proyekt', 'Fldisk', 'Router', 'Kabel', 'Laptop'];
+                  const titles = [
+                    'Mouse',
+                    'Kybord',
+                    'Proyektor',
+                    'Flashdisk',
+                    'Router',
+                  ];
                   if (value.toInt() < 0 || value.toInt() >= titles.length) {
                     return const SizedBox.shrink();
                   }
@@ -194,7 +222,11 @@ class BerandaAdmin extends StatelessWidget {
                     space: 10,
                     child: Text(
                       titles[value.toInt()],
-                      style: const TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.black54),
+                      style: const TextStyle(
+                        fontSize: 9,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black54,
+                      ),
                     ),
                   );
                 },
@@ -213,17 +245,20 @@ class BerandaAdmin extends StatelessWidget {
                 },
               ),
             ),
-            topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-            rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
+            topTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            rightTitles: const AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
           ),
           gridData: FlGridData(
             show: true,
             drawVerticalLine: false,
             horizontalInterval: 50,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: Colors.grey.withOpacity(0.1),
-              strokeWidth: 1,
-            ),
+            getDrawingHorizontalLine:
+                (value) =>
+                    FlLine(color: Colors.grey.withOpacity(0.1), strokeWidth: 1),
           ),
           borderData: FlBorderData(show: false),
           barGroups: [
@@ -232,8 +267,6 @@ class BerandaAdmin extends StatelessWidget {
             _makeGroupData(2, 210),
             _makeGroupData(3, 120),
             _makeGroupData(4, 60),
-            _makeGroupData(5, 150),
-            _makeGroupData(6, 190),
           ],
         ),
       ),

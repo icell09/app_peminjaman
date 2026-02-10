@@ -1,4 +1,47 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+class PeminjamanService {
+  final SupabaseClient _db = Supabase.instance.client;
+
+  // ======================================================
+  // TAMBAHAN: INSERT PEMINJAMAN + DETAIL PEMINJAMAN
+  // ======================================================
+  Future<void> ajukanPeminjaman({
+    required String idUser,
+    required DateTime tglPinjam,
+    required DateTime tglKembaliRencana,
+    required List<Map<String, dynamic>> alat,
+  }) async {
+    // 1️⃣ insert ke tabel peminjaman
+    final peminjaman =
+        await _db
+            .from('peminjaman')
+            .insert({
+              'id_user': idUser,
+              'tgl_pinjam': tglPinjam.toIso8601String(),
+              'tgl_kembali_rencana': tglKembaliRencana.toIso8601String(),
+              'status': 'Diajukan',
+              'alasan_penolakan': null,
+            })
+            .select()
+            .single();
+
+    final idPeminjaman = peminjaman['id_peminjaman'];
+
+    // 2️⃣ insert ke detail_peminjaman
+    final detailList =
+        alat.map((a) {
+          return {
+            'id_peminjaman': idPeminjaman,
+            'id_alat': a['id'], // wajib ada
+            'jumlah_pinjam': a['qty'],
+          };
+        }).toList();
+
+    await _db.from('detail_peminjaman').insert(detailList);
+  }
+}
 
 class PeminjamanController extends ChangeNotifier {
   // ============================================================
@@ -17,9 +60,10 @@ class PeminjamanController extends ChangeNotifier {
   final List<Map<String, dynamic>> alatList;
 
   // Constructor: salin alat dari beranda
-  PeminjamanController(List<Map<String, dynamic>> alatDipilih, {required List<Map<String, String>> allData})
-      : alatList =
-            alatDipilih.map((a) => {...a, 'qty': a['qty'] ?? 1}).toList();
+  PeminjamanController(
+    List<Map<String, dynamic>> alatDipilih, {
+    required List<Map<String, String>> allData,
+  }) : alatList = alatDipilih.map((a) => {...a, 'qty': a['qty'] ?? 1}).toList();
 
   // ============================================================
   // ================== MANIPULASI ALAT =========================
@@ -152,9 +196,7 @@ class PeminjamanController extends ChangeNotifier {
 
   /// 📦 Ringkasan alat (untuk dialog / konfirmasi)
   List<String> getAlatSummary() {
-    return alatList
-        .map((a) => '${a['nama_alat']} (${a['qty']}x)')
-        .toList();
+    return alatList.map((a) => '${a['nama_alat']} (${a['qty']}x)').toList();
   }
 
   // ============================================================
